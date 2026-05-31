@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#E8923C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="WhereIn5">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <title>Where In 5?</title>
+  <style>
+    /* ──────────────────────────────────────────────
+       Theme + reset
+       ────────────────────────────────────────────── */
+    :root {
+      --amber: #E8923C;
+      --amber-dark: #C77628;
+      --amber-light: #F5B468;
+      --cream: #FFF8EC;
+      --cream-dark: #F0E6D2;
+      --charcoal: #2E2620;
+      --soft-gray: #8B7E6E;
+      --highlight: #FFEC8A;
+      --danger: #C73C3C;
+      --success: #4A7C4A;
+      --border: rgba(46, 38, 32, 0.12);
+      --shadow: 0 2px 8px rgba(46, 38, 32, 0.08);
+      --shadow-lg: 0 8px 24px rgba(46, 38, 32, 0.18);
+      --radius: 14px;
+      --tab-bar-h: calc(60px + env(safe-area-inset-bottom));
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--cream);
+      color: var(--charcoal);
+      height: 100%;
+      font-size: 17px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    button { font: inherit; cursor: pointer; color: inherit; }
+    input, textarea, select { font: inherit; color: inherit; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--amber); }
+
+    .hidden { display: none !important; }
+
+    /* ──────────────────────────────────────────────
+       Setup screen
+       ────────────────────────────────────────────── */
+    #setup-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--cream);
+      padding: 28px 24px;
+      padding-top: calc(env(safe-area-inset-top) + 28px);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 28px);
+      overflow-y: auto;
+      z-index: 1000;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #setup-screen h1 {
+      font-size: 30px;
+      color: var(--amber-dark);
+      margin: 0 0 4px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    #setup-screen .lead {
+      color: var(--soft-gray);
+      margin: 0 0 20px;
+    }
+
+    .setup-form label {
+      display: block;
+      margin: 20px 0 6px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .setup-form input {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      min-height: 48px;
+    }
+    .setup-form input:focus { border-color: var(--amber); }
+    .help-text {
+      font-size: 13px;
+      color: var(--soft-gray);
+      margin: 6px 0 0;
+      line-height: 1.5;
+    }
+    .help-text a { color: var(--amber-dark); }
+
+    .btn-primary {
+      background: var(--amber);
+      color: white;
+      border: none;
+      padding: 16px 24px;
+      border-radius: var(--radius);
+      font-weight: 700;
+      font-size: 17px;
+      width: 100%;
+      margin-top: 24px;
+      min-height: 52px;
+      box-shadow: var(--shadow);
+    }
+    .btn-primary:active { background: var(--amber-dark); transform: translateY(1px); }
+
+    .btn-secondary {
+      flex: 1;
+      background: transparent;
+      color: var(--charcoal);
+      border: 1px solid var(--border);
+      padding: 14px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      min-height: 48px;
+    }
+    .btn-secondary:active { background: var(--cream-dark); }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      min-height: 48px;
+      flex: 1;
+    }
+    .btn-danger:active { background: #A52E2E; }
+
+    /* ──────────────────────────────────────────────
+       App layout
+       ────────────────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      max-width: 700px;
+      margin: 0 auto;
+      width: 100%;
+      position: relative;
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      flex-direction: column;
+      padding-top: env(safe-area-inset-top);
+    }
+    .tab-content.active { display: flex; }
+
+    #tab-bar {
+      position: sticky;
+      bottom: 0;
+      background: var(--cream);
+      border-top: 1px solid var(--border);
+      display: flex;
+      height: var(--tab-bar-h);
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 100;
+    }
+
+    #tab-bar button {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--soft-gray);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 11px;
+      min-height: 56px;
+      font-weight: 600;
+      transition: color 0.15s;
+    }
+    #tab-bar button.active { color: var(--amber-dark); }
+    #tab-bar button svg { width: 26px; height: 26px; }
+
+    /* ──────────────────────────────────────────────
+       Voice / chat tab
+       ────────────────────────────────────────────── */
+    #tab-voice { padding: 0; }
+
+    #conversation {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #conversation .empty-state {
+      margin: auto;
+      text-align: center;
+      color: var(--soft-gray);
+      padding: 0 20px;
+    }
+    #conversation .empty-state .big {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    .msg {
+      max-width: 88%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      animation: msg-in 0.18s ease-out;
+    }
+    @keyframes msg-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: var(--amber);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.assistant {
+      align-self: flex-start;
+      background: white;
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .msg .subtitle {
+      margin-top: 10px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .match-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .match-card {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      font: inherit;
+      color: inherit;
+      min-height: 48px;
+      transition: background-color 0.15s;
+    }
+    .match-card:active { background: var(--cream-dark); }
+    .match-card-name { font-weight: 600; }
+    .match-card-loc { color: var(--soft-gray); font-size: 14px; margin-top: 4px; }
+
+    .input-area {
+      padding: 10px 14px;
+      padding-bottom: 12px;
+      background: var(--cream);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #mic-container {
+      display: flex;
+      justify-content: center;
+    }
+
+    #mic-btn {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: var(--amber);
+      color: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.15s, background-color 0.15s;
+    }
+    #mic-btn:active { transform: scale(0.94); }
+    #mic-btn svg { width: 30px; height: 30px; }
+
+    #mic-btn.listening {
+      animation: pulse 1.4s ease-in-out infinite;
+      background: var(--danger);
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(199, 60, 60, 0.55), var(--shadow); }
+      50% { box-shadow: 0 0 0 16px rgba(199, 60, 60, 0), var(--shadow); }
+    }
+
+    #live-transcript {
+      text-align: center;
+      font-style: italic;
+      color: var(--soft-gray);
+      min-height: 18px;
+      font-size: 14px;
+    }
+
+    #text-form {
+      display: flex;
+      gap: 8px;
+    }
+    #text-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: white;
+      min-height: 48px;
+    }
+    #text-form button {
+      padding: 0 18px;
+      background: var(--amber);
+      color: white;
+      border: none;
+      border-radius: 24px;
+      font-weight: 700;
+      min-width: 48px;
+      min-height: 48px;
+    }
+    #text-form button:active { background: var(--amber-dark); }
+
+    /* ──────────────────────────────────────────────
+       Inventory tab
+       ────────────────────────────────────────────── */
+    #tab-inventory { padding: 0; position: relative; }
+
+    .inv-header {
+      padding: 12px 16px;
+      background: var(--cream);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #inv-search {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      min-height: 48px;
+    }
+
+    #inv-tree {
+      padding: 12px 16px 96px;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tree-group { margin-bottom: 2px; }
+
+    .tree-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: var(--radius);
+      background: transparent;
+      border: none;
+      width: 100%;
+      text-align: left;
+      color: var(--charcoal);
+      font-size: 16px;
+      min-height: 44px;
+    }
+    .tree-header:active { background: var(--cream-dark); }
+
+    .tree-chevron {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .tree-group.expanded > .tree-header .tree-chevron {
+      transform: rotate(90deg);
+    }
+
+    .tree-children {
+      padding-left: 18px;
+      display: none;
+    }
+    .tree-group.expanded > .tree-children { display: block; }
+
+    .tree-item {
+      padding: 12px 14px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin: 6px 0;
+      cursor: pointer;
+      transition: background-color 0.5s, border-color 0.5s;
+      min-height: 48px;
+    }
+    .tree-item:active { background: var(--cream-dark); }
+    .tree-item.highlight {
+      background: var(--highlight);
+      border-color: #E8C935;
+    }
+    .tree-item-name { font-weight: 600; }
+    .tree-item-loc {
+      font-size: 13px;
+      color: var(--soft-gray);
+      margin-top: 3px;
+    }
+    .tree-item-date {
+      font-size: 12px;
+      color: var(--soft-gray);
+      margin-top: 2px;
+    }
+
+    .group-count {
+      margin-left: auto;
+      color: var(--soft-gray);
+      font-weight: 500;
+      font-size: 13px;
+    }
+
+    #fab-add {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--amber);
+      color: white;
+      border: none;
+      box-shadow: var(--shadow-lg);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #fab-add:active { background: var(--amber-dark); transform: scale(0.94); }
+    #fab-add svg { width: 26px; height: 26px; }
+
+    /* ──────────────────────────────────────────────
+       Sheets / modals
+       ────────────────────────────────────────────── */
+    .sheet-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      animation: overlay-in 0.18s ease-out;
+    }
+    @keyframes overlay-in {
+      from { background: rgba(0,0,0,0); }
+      to { background: rgba(0,0,0,0.4); }
+    }
+
+    .sheet {
+      background: var(--cream);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 600px;
+      padding: 22px 20px;
+      padding-bottom: calc(env(safe-area-inset-bottom) + 22px);
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: sheet-in 0.22s ease-out;
+      -webkit-overflow-scrolling: touch;
+    }
+    @keyframes sheet-in {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .sheet h2 {
+      margin: 0 0 4px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .sheet .sheet-sub {
+      margin: 0 0 18px;
+      color: var(--soft-gray);
+      font-size: 14px;
+    }
+
+    .sheet label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .sheet input, .sheet select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      min-height: 48px;
+    }
+
+    .sheet-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .loc-pickers {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .loc-row {
+      display: flex;
+      gap: 8px;
+    }
+    .loc-row select, .loc-row input {
+      flex: 1;
+    }
+
+    /* ──────────────────────────────────────────────
+       Settings tab
+       ────────────────────────────────────────────── */
+    #tab-settings { padding: 0; }
+    #settings-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 16px 32px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .settings-section {
+      background: white;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+    .settings-section h2 {
+      font-size: 15px;
+      margin: 0 0 12px;
+      color: var(--amber-dark);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .settings-section label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .settings-section input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--cream);
+      min-height: 48px;
+    }
+    .settings-section .btn-primary { margin-top: 14px; }
+    .settings-section .btn-secondary { margin-top: 8px; width: 100%; }
+    .settings-section .btn-danger { margin-top: 8px; width: 100%; }
+
+    .file-input-wrap {
+      position: relative;
+      display: block;
+      width: 100%;
+    }
+    .file-input-wrap input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .api-usage-text {
+      font-size: 14px;
+      color: var(--soft-gray);
+    }
+
+    /* ──────────────────────────────────────────────
+       Toasts + sync indicator
+       ────────────────────────────────────────────── */
+    #toasts {
+      position: fixed;
+      bottom: calc(var(--tab-bar-h) + 16px);
+      left: 16px;
+      right: 16px;
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--charcoal);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 24px;
+      font-size: 15px;
+      max-width: 360px;
+      text-align: center;
+      animation: toast-in 0.22s ease-out;
+      box-shadow: var(--shadow-lg);
+    }
+    .toast.error { background: var(--danger); }
+    .toast.success { background: var(--success); }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #sync-indicator {
+      position: fixed;
+      top: calc(env(safe-area-inset-top) + 8px);
+      right: 14px;
+      z-index: 300;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: rgba(46, 38, 32, 0.78);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+    }
+    #sync-indicator.visible { display: flex; }
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--soft-gray);
+    }
+
+    .item-action-info {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .item-action-info .name { font-weight: 700; font-size: 18px; }
+    .item-action-info .loc { color: var(--soft-gray); font-size: 14px; margin-top: 4px; }
+
+    .action-list button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 14px 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      font-weight: 600;
+      min-height: 48px;
+    }
+    .action-list button:active { background: var(--cream-dark); }
+    .action-list button.danger { color: var(--danger); }
+  </style>
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════════
+       Setup screen (first run / re-config)
+       ════════════════════════════════════════════════ -->
+  <div id="setup-screen" class="hidden">
+    <h1>Where In 5?</h1>
+    <p class="lead">A quick one-time setup, then you're ready.</p>
+
+    <div class="setup-form">
+      <label for="setup-anthropic-key">Anthropic API key</label>
+      <input id="setup-anthropic-key" type="password" autocomplete="off" placeholder="sk-ant-...">
+      <p class="help-text">
+        Set a £5/month spending limit at
+        <a href="https://console.anthropic.com/settings/limits" target="_blank" rel="noopener">console.anthropic.com</a>
+        — your key is stored in this browser only.
+      </p>
+
+      <label for="setup-jsonbin-id">JSONBin Bin ID</label>
+      <input id="setup-jsonbin-id" type="text" autocomplete="off" placeholder="65f8...">
+      <p class="help-text">Create a bin at <a href="https://jsonbin.io" target="_blank" rel="noopener">jsonbin.io</a>.</p>
+
+      <label for="setup-jsonbin-key">JSONBin Access Key</label>
+      <input id="setup-jsonbin-key" type="password" autocomplete="off" placeholder="$2a$10$...">
+      <p class="help-text">
+        Use an <strong>Access Key</strong>, not the Master Key — it's safer for browser use.
+        <a href="https://jsonbin.io/api-reference/access-keys/create" target="_blank" rel="noopener">How to create one</a>.
+      </p>
+
+      <button id="setup-btn" class="btn-primary" type="button">Save &amp; Start</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       Main app
+       ════════════════════════════════════════════════ -->
+  <div id="app" class="hidden">
+
+    <div id="sync-indicator"><div class="spinner"></div><span>Syncing…</span></div>
+
+    <!-- Voice / chat tab -->
+    <main id="tab-voice" class="tab-content active">
+      <div id="conversation">
+        <div class="empty-state">
+          <div class="big">🎤</div>
+          <div>Tap the mic and ask where something is.</div>
+          <div style="margin-top:6px;font-size:14px">e.g. "where are the batteries?"</div>
+        </div>
+      </div>
+      <div class="input-area">
+        <div id="mic-container">
+          <button id="mic-btn" type="button" aria-label="Tap to speak">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+              <path d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V21H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-3.08A7 7 0 0 0 19 11z"/>
+            </svg>
+          </button>
+        </div>
+        <div id="live-transcript"></div>
+        <form id="text-form" autocomplete="off">
+          <input id="text-input" type="text" placeholder="Or type your question…">
+          <button type="submit" aria-label="Send">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <!-- Inventory tab -->
+    <main id="tab-inventory" class="tab-content">
+      <div class="inv-header">
+        <input id="inv-search" type="search" placeholder="Search items or rooms…" autocomplete="off">
+      </div>
+      <div id="inv-tree"></div>
+      <button id="fab-add" type="button" aria-label="Add item">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        </svg>
+      </button>
+    </main>
+
+    <!-- Settings tab -->
+    <main id="tab-settings" class="tab-content">
+      <div id="settings-scroll">
+        <div class="settings-section">
+          <h2>API Keys</h2>
+          <label for="set-anthropic-key">Anthropic API key</label>
+          <input id="set-anthropic-key" type="password" autocomplete="off">
+
+          <label for="set-jsonbin-id">JSONBin Bin ID</label>
+          <input id="set-jsonbin-id" type="text" autocomplete="off">
+
+          <label for="set-jsonbin-key">JSONBin Access Key</label>
+          <input id="set-jsonbin-key" type="password" autocomplete="off">
+
+          <button id="save-keys-btn" class="btn-primary" type="button">Save keys</button>
+          <button id="setup-from-settings-btn" class="btn-secondary" type="button">Re-run setup</button>
+        </div>
+
+        <div class="settings-section">
+          <h2>Data</h2>
+          <button id="export-btn" class="btn-secondary" type="button">Export inventory (JSON)</button>
+          <label class="file-input-wrap btn-secondary" style="display:flex;align-items:center;justify-content:center;cursor:pointer;">
+            <span>Import JSON…</span>
+            <input id="import-input" type="file" accept="application/json,.json">
+          </label>
+          <button id="clear-btn" class="btn-danger" type="button">Clear all data</button>
+        </div>
+
+        <div class="settings-section">
+          <h2>This session</h2>
+          <div id="api-usage" class="api-usage-text">0 Claude calls this session</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom tab bar -->
+    <nav id="tab-bar">
+      <button type="button" data-tab="voice" class="active" aria-label="Voice">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+          <path d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V21H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-3.08A7 7 0 0 0 19 11z"/>
+        </svg>
+        <span>Ask</span>
+      </button>
+      <button type="button" data-tab="inventory" aria-label="Inventory">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3 5h18v2H3zm0 6h18v2H3zm0 6h18v2H3z"/>
+        </svg>
+        <span>Inventory</span>
+      </button>
+      <button type="button" data-tab="settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M19.14 12.94a7.07 7.07 0 0 0 .05-.94 7.07 7.07 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.41h-3.84a.5.5 0 0 0-.5.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.66 8.87a.5.5 0 0 0 .12.61l2.03 1.58a7.16 7.16 0 0 0 0 1.88L2.78 14.52a.5.5 0 0 0-.12.61l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.49.38 1.03.7 1.62.94l.36 2.54a.5.5 0 0 0 .5.41h3.84a.5.5 0 0 0 .5-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.61zM12 15.6A3.6 3.6 0 1 1 15.6 12 3.6 3.6 0 0 1 12 15.6z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════════
+       Modals
+       ════════════════════════════════════════════════ -->
+  <div id="add-item-modal" class="sheet-overlay hidden">
+    <div class="sheet">
+      <h2 id="add-item-title">Add item</h2>
+      <p class="sheet-sub">Where does it live?</p>
+
+      <label for="add-name">Item</label>
+      <input id="add-name" type="text" placeholder="e.g. batteries">
+
+      <label>Location</label>
+      <div id="loc-pickers" class="loc-pickers"></div>
+
+      <div class="sheet-actions">
+        <button id="cancel-item-btn" class="btn-secondary" type="button">Cancel</button>
+        <button id="save-item-btn" class="btn-primary" type="button" style="margin-top:0;">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="item-action-modal" class="sheet-overlay hidden">
+    <div class="sheet">
+      <div class="item-action-info">
+        <div class="name" id="action-item-name"></div>
+        <div class="loc" id="action-item-loc"></div>
+      </div>
+      <div class="action-list">
+        <button id="action-edit-btn" type="button">Move to another location</button>
+        <button id="action-delete-btn" type="button" class="danger">Delete item</button>
+      </div>
+      <div class="sheet-actions" style="margin-top:8px;">
+        <button id="action-cancel-btn" class="btn-secondary" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+  <script>
+  'use strict';
+
+  /* ═══════════════════════════════════════════════════════════════
+     STATE + STORAGE
+     ═══════════════════════════════════════════════════════════════ */
+
+  const DEFAULT_ROOMS = ['Lounge', 'Kitchen', 'Landing', 'Loft', 'Joss Cupboard', 'Landing Cupboard'];
+  const LOC_LABELS = ['Room', 'Area', 'Spot', 'Detail'];
+
+  const STORAGE = {
+    anthropicKey: 'wherein5.anthropicKey',
+    jsonbinId: 'wherein5.jsonbinId',
+    jsonbinAccessKey: 'wherein5.jsonbinAccessKey',
+    inventory: 'wherein5.inventory'
+  };
+
+  const state = {
+    config: { anthropicKey: '', jsonbinId: '', jsonbinAccessKey: '' },
+    inventory: { items: [] },
+    conversation: [],
+    apiCallsThisSession: 0,
+    syncPending: false,
+    recognition: null,
+    lastFinalTranscript: null,
+    currentItem: null,
+    editingItemId: null
+  };
+
+  let fuse = null;
+
+  function loadConfig() {
+    state.config.anthropicKey = localStorage.getItem(STORAGE.anthropicKey) || '';
+    state.config.jsonbinId = localStorage.getItem(STORAGE.jsonbinId) || '';
+    state.config.jsonbinAccessKey = localStorage.getItem(STORAGE.jsonbinAccessKey) || '';
+    const inv = localStorage.getItem(STORAGE.inventory);
+    if (inv) {
+      try {
+        const parsed = JSON.parse(inv);
+        if (parsed && Array.isArray(parsed.items)) state.inventory = parsed;
+      } catch { /* ignore */ }
+    }
+  }
+
+  function saveLocalInventory() {
+    localStorage.setItem(STORAGE.inventory, JSON.stringify(state.inventory));
+  }
+
+  function isConfigured() {
+    return !!(state.config.anthropicKey && state.config.jsonbinId && state.config.jsonbinAccessKey);
+  }
+
+  function getActiveItems() {
+    return state.inventory.items.filter(i => !i.deleted);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     TOAST + SYNC INDICATOR
+     ═══════════════════════════════════════════════════════════════ */
+
+  function toast(message, type = '') {
+    const t = document.createElement('div');
+    t.className = 'toast' + (type ? ' ' + type : '');
+    t.textContent = message;
+    document.getElementById('toasts').appendChild(t);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transition = 'opacity 0.3s';
+      setTimeout(() => t.remove(), 300);
+    }, 3000);
+  }
+
+  function showSync(visible) {
+    document.getElementById('sync-indicator').classList.toggle('visible', visible);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     JSONBIN SYNC
+     Conflict strategy: union by id, prefer the most recent
+     lastModified timestamp. Deletes are tombstones (deleted=true) so
+     they survive merge with a remote copy that still has the item.
+     ═══════════════════════════════════════════════════════════════ */
+
+  function mergeInventories(local, remote) {
+    const map = new Map();
+    const all = [...(remote.items || []), ...(local.items || [])];
+    for (const item of all) {
+      const existing = map.get(item.id);
+      if (!existing) { map.set(item.id, item); continue; }
+      const a = new Date(existing.lastModified || existing.added || 0).getTime();
+      const b = new Date(item.lastModified || item.added || 0).getTime();
+      if (b >= a) map.set(item.id, item);
+    }
+    return { items: Array.from(map.values()) };
+  }
+
+  async function syncWithJSONBin() {
+    if (!state.config.jsonbinId || !state.config.jsonbinAccessKey) {
+      saveLocalInventory();
+      return;
+    }
+    showSync(true);
+    try {
+      const getResp = await fetch(
+        `https://api.jsonbin.io/v3/b/${encodeURIComponent(state.config.jsonbinId)}/latest`,
+        { headers: { 'X-Access-Key': state.config.jsonbinAccessKey } }
+      );
+      let remote = { items: [] };
+      if (getResp.ok) {
+        const json = await getResp.json();
+        remote = json.record || { items: [] };
+        if (!Array.isArray(remote.items)) remote.items = [];
+      } else if (getResp.status !== 404) {
+        throw new Error('GET ' + getResp.status);
+      }
+
+      const merged = mergeInventories(state.inventory, remote);
+      state.inventory = merged;
+      saveLocalInventory();
+      rebuildFuse();
+
+      const putResp = await fetch(
+        `https://api.jsonbin.io/v3/b/${encodeURIComponent(state.config.jsonbinId)}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Access-Key': state.config.jsonbinAccessKey
+          },
+          body: JSON.stringify(merged)
+        }
+      );
+      if (!putResp.ok) throw new Error('PUT ' + putResp.status);
+      state.syncPending = false;
+      // Re-render anything that depends on inventory
+      renderInventory(document.getElementById('inv-search').value);
+    } catch (err) {
+      state.syncPending = true;
+      saveLocalInventory();
+      toast("Saved locally — couldn't sync. Will retry.", 'error');
+    } finally {
+      showSync(false);
+    }
+  }
+
+  async function retrySyncIfPending() {
+    if (state.syncPending) await syncWithJSONBin();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     VOICE — Web Speech API (recognition + synthesis)
+     ═══════════════════════════════════════════════════════════════ */
+
+  function initVoice() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      document.getElementById('mic-container').classList.add('hidden');
+      return;
+    }
+    const r = new SR();
+    r.lang = 'en-GB';
+    r.continuous = false;          // iOS Safari: cannot be continuous
+    r.interimResults = true;
+
+    r.onresult = (e) => {
+      let interim = '';
+      let final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t;
+        else interim += t;
+      }
+      document.getElementById('live-transcript').textContent = interim || final;
+      if (final) state.lastFinalTranscript = final;
+    };
+
+    r.onend = () => {
+      document.getElementById('mic-btn').classList.remove('listening');
+      document.getElementById('live-transcript').textContent = '';
+      if (state.lastFinalTranscript) {
+        const txt = state.lastFinalTranscript;
+        state.lastFinalTranscript = null;
+        handleUserQuery(txt);
+      }
+    };
+
+    r.onerror = (e) => {
+      document.getElementById('mic-btn').classList.remove('listening');
+      document.getElementById('live-transcript').textContent = '';
+      if (e.error && e.error !== 'no-speech' && e.error !== 'aborted') {
+        toast('Voice error: ' + e.error, 'error');
+      }
+    };
+
+    state.recognition = r;
+  }
+
+  function toggleMic() {
+    if (!state.recognition) {
+      toast('Voice not available — use the text box', 'error');
+      return;
+    }
+    const btn = document.getElementById('mic-btn');
+    if (btn.classList.contains('listening')) {
+      try { state.recognition.stop(); } catch { /* ignore */ }
+    } else {
+      state.lastFinalTranscript = null;
+      try {
+        state.recognition.start();
+        btn.classList.add('listening');
+      } catch {
+        toast('Could not start mic', 'error');
+      }
+    }
+  }
+
+  function speak(text) {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-GB';
+      u.rate = 1.0;
+      u.pitch = 1.0;
+      window.speechSynthesis.speak(u);
+    } catch { /* ignore */ }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     FUSE SEARCH
+     ═══════════════════════════════════════════════════════════════ */
+
+  function rebuildFuse() {
+    const items = getActiveItems().map(i => ({
+      ...i,
+      locationStr: (i.location || []).join(' ')
+    }));
+    fuse = new Fuse(items, {
+      keys: [
+        { name: 'name', weight: 2 },
+        { name: 'locationStr', weight: 1 }
+      ],
+      includeScore: true,
+      threshold: 0.6,
+      ignoreLocation: true
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     INTENT CLASSIFICATION
+     ═══════════════════════════════════════════════════════════════ */
+
+  const STORE_PATTERNS = [
+    /\bput\b/i, /\bputting\b/i, /\bplaced\b/i, /\bstored\b/i,
+    /\bis in\b/i, /\bare in\b/i, /\bmoved to\b/i,
+    /\badded\b/i, /\bkept\b/i, /\blives in\b/i, /\bgoes in\b/i
+  ];
+  const DELETE_PATTERNS = [
+    /\bdelete\b/i, /\bremove\b/i, /\bthrew away\b/i,
+    /\bbinned\b/i, /\bused up\b/i, /\bgone\b/i
+  ];
+  const UPDATE_PATTERNS = [
+    /\bactually\b/i, /\bno wait\b/i, /\bmoved\b/i, /\bnow in\b/i
+  ];
+  const FIND_STARTER = /^\s*(where|find|locate|look for|show me|what(’|')?s in|whats in)\b/i;
+
+  function classifyIntent(text) {
+    const t = text.trim();
+    for (const p of STORE_PATTERNS) if (p.test(t)) return 'STORE';
+    for (const p of DELETE_PATTERNS) if (p.test(t)) return 'DELETE';
+    for (const p of UPDATE_PATTERNS) if (p.test(t)) return 'UPDATE';
+    if (FIND_STARTER.test(t)) return 'FIND';
+    if (t.endsWith('?')) return 'FIND';
+    const words = t.replace(/[?.!,]/g, '').split(/\s+/).filter(Boolean);
+    if (words.length > 0 && words.length <= 3) return 'FIND';
+    return 'UNCLEAR';
+  }
+
+  function cleanFindTerm(text) {
+    return text
+      .toLowerCase()
+      .replace(/^\s*(where (is|are|s|'s)|find|locate|look for|show me|what(’|')?s in|whats in)\s+/i, '')
+      .replace(/^\s*(the|a|an|my|our|some)\s+/i, '')
+      .replace(/\s+please\s*$/i, '')
+      .replace(/[?.!,]+\s*$/, '')
+      .trim();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LOCAL FIND HANDLER
+     Returns one of: null (fall through to Claude), or
+       { kind: 'single' | 'multi' | 'best-with-alts' | 'weak', ... }
+     ═══════════════════════════════════════════════════════════════ */
+
+  function handleFindLocal(rawText) {
+    const term = cleanFindTerm(rawText);
+    if (!term || !fuse) return null;
+    const results = fuse.search(term);
+    if (results.length === 0) return null;
+    const top = results[0];
+    const second = results[1];
+
+    // Single confident match: very strong, OR strong with big gap to next.
+    const singleConfident =
+      top.score < 0.3 ||
+      (top.score < 0.4 && (!second || (second.score - top.score) > 0.25));
+    if (singleConfident) {
+      return { kind: 'single', item: top.item, term };
+    }
+
+    // Multiple close matches (2+ with score < 0.4).
+    const close = results.filter(r => r.score < 0.4);
+    if (close.length >= 2) {
+      return { kind: 'multi', items: close.slice(0, 6).map(r => r.item), term };
+    }
+
+    // Best guess + weaker alternatives.
+    if (top.score < 0.4) {
+      const alts = results.filter(r => r.score >= 0.4 && r.score <= 0.55).slice(0, 4);
+      return { kind: 'best-with-alts', best: top.item, alternatives: alts.map(r => r.item), term };
+    }
+
+    // Weak-only suggestions.
+    if (top.score <= 0.6) {
+      return {
+        kind: 'weak',
+        items: results.filter(r => r.score <= 0.6).slice(0, 5).map(r => r.item),
+        term
+      };
+    }
+
+    return null;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     CLAUDE API
+     ═══════════════════════════════════════════════════════════════ */
+
+  const CLAUDE_TOOLS = [
+    {
+      name: 'store_item',
+      description: 'Store a new item in the inventory at a specific location.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'The item name, lowercase, plural where natural.' },
+          location_array: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '1–4 levels deep, Title Case. e.g. ["Kitchen", "Drawer", "Top", "Back"].'
+          },
+          confirmation_text: { type: 'string', description: 'Short, warm reply to read aloud.' }
+        },
+        required: ['name', 'location_array', 'confirmation_text']
+      }
+    },
+    {
+      name: 'delete_item',
+      description: 'Remove an item from the inventory by name.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          item_name: { type: 'string', description: 'Name to remove (matched against inventory).' },
+          confirmation_text: { type: 'string' }
+        },
+        required: ['item_name', 'confirmation_text']
+      }
+    },
+    {
+      name: 'update_item_location',
+      description: 'Move an existing item to a new location.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          item_name: { type: 'string' },
+          new_location_array: { type: 'array', items: { type: 'string' } },
+          confirmation_text: { type: 'string' }
+        },
+        required: ['item_name', 'new_location_array', 'confirmation_text']
+      }
+    },
+    {
+      name: 'find_item',
+      description: 'User wants to find an item. The app will run a fuzzy search with the term.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          search_term: { type: 'string', description: 'Cleaned search term — just the noun(s).' },
+          confirmation_text: { type: 'string', description: 'Fallback reply if no match is found.' }
+        },
+        required: ['search_term', 'confirmation_text']
+      }
+    },
+    {
+      name: 'ask_clarification',
+      description: 'Ask the user a brief follow-up question when the request is ambiguous.',
+      input_schema: {
+        type: 'object',
+        properties: { question_text: { type: 'string' } },
+        required: ['question_text']
+      }
+    }
+  ];
+
+  function buildSystemPrompt() {
+    return [
+      'You are the assistant for "Where In 5?", a household inventory app for a family of 5. You help store, find, update, and delete items by location.',
+      '',
+      'The current inventory is provided as JSON below.',
+      '',
+      'You MUST respond by calling exactly one tool. Never respond with plain text.',
+      '',
+      'Use British English. Location arrays use Title Case. Use existing room names where they match: Lounge, Kitchen, Landing, Loft, Joss Cupboard, Landing Cupboard. Location arrays can be 1-4 levels deep.',
+      '',
+      'Keep confirmation_text short, warm, and natural — like a helpful family member, not a robot.',
+      '',
+      'Current inventory:',
+      JSON.stringify({ items: getActiveItems() }, null, 2)
+    ].join('\n');
+  }
+
+  async function callClaude(userText) {
+    if (!state.config.anthropicKey) {
+      toast('Set your Anthropic API key in Settings', 'error');
+      switchTab('settings');
+      return null;
+    }
+    state.apiCallsThisSession++;
+    updateApiUsage();
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': state.config.anthropicKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5',
+          max_tokens: 500,
+          system: buildSystemPrompt(),
+          tools: CLAUDE_TOOLS,
+          tool_choice: { type: 'any' },
+          messages: [{ role: 'user', content: userText }]
+        })
+      });
+      if (!resp.ok) {
+        let msg = String(resp.status);
+        try {
+          const j = await resp.json();
+          msg = (j && j.error && j.error.message) || msg;
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      const data = await resp.json();
+      const toolUse = (data.content || []).find(c => c.type === 'tool_use');
+      if (!toolUse) {
+        const text = (data.content || []).find(c => c.type === 'text');
+        return { kind: 'plain', text: (text && text.text) || "Sorry, I didn't understand — try again" };
+      }
+      return { kind: 'tool', name: toolUse.name, input: toolUse.input };
+    } catch (err) {
+      toast('Claude error: ' + err.message, 'error');
+      return null;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     QUERY HANDLING — main entry point for voice & text input
+     ═══════════════════════════════════════════════════════════════ */
+
+  async function handleUserQuery(text) {
+    if (!text || !text.trim()) return;
+    text = text.trim();
+    addMessage('user', text);
+
+    // Retry any pending sync on user action.
+    retrySyncIfPending().catch(() => {});
+
+    const intent = classifyIntent(text);
+
+    if (intent === 'FIND') {
+      const local = handleFindLocal(text);
+      if (local) {
+        respondToFindResult(local);
+        return;
+      }
+      // Local didn't yield — fall through to Claude.
+    }
+
+    const claudeResp = await callClaude(text);
+    if (!claudeResp) return;
+    await handleClaudeResponse(claudeResp);
+  }
+
+  async function handleClaudeResponse(resp) {
+    if (resp.kind === 'plain') {
+      addMessage('assistant', resp.text);
+      speak(resp.text);
+      return;
+    }
+    const { name, input } = resp;
+    switch (name) {
+      case 'store_item': {
+        const item = {
+          id: String(Date.now()),
+          name: (input.name || '').toLowerCase().trim(),
+          location: input.location_array || [],
+          added: new Date().toISOString(),
+          lastModified: new Date().toISOString()
+        };
+        if (!item.name || !item.location.length) {
+          addMessage('assistant', "Sorry, I need both an item and a location.");
+          speak("Sorry, I need both an item and a location.");
+          return;
+        }
+        state.inventory.items.push(item);
+        rebuildFuse();
+        addMessage('assistant', input.confirmation_text);
+        speak(input.confirmation_text);
+        renderInventory();
+        await syncWithJSONBin();
+        break;
+      }
+      case 'delete_item': {
+        const match = findItemByName(input.item_name);
+        if (match) {
+          match.deleted = true;
+          match.lastModified = new Date().toISOString();
+          rebuildFuse();
+          addMessage('assistant', input.confirmation_text);
+          speak(input.confirmation_text);
+          renderInventory();
+          await syncWithJSONBin();
+        } else {
+          const msg = `Couldn't find "${input.item_name}" to remove.`;
+          addMessage('assistant', msg);
+          speak(msg);
+        }
+        break;
+      }
+      case 'update_item_location': {
+        const match = findItemByName(input.item_name);
+        if (match && Array.isArray(input.new_location_array) && input.new_location_array.length) {
+          match.location = input.new_location_array;
+          match.lastModified = new Date().toISOString();
+          rebuildFuse();
+          addMessage('assistant', input.confirmation_text);
+          speak(input.confirmation_text);
+          renderInventory();
+          await syncWithJSONBin();
+        } else {
+          const msg = `Couldn't find "${input.item_name}" to move.`;
+          addMessage('assistant', msg);
+          speak(msg);
+        }
+        break;
+      }
+      case 'find_item': {
+        const local = handleFindLocal(input.search_term);
+        if (local) {
+          respondToFindResult(local);
+        } else {
+          const msg = input.confirmation_text || "I couldn't find that.";
+          addMessage('assistant', msg);
+          speak(msg);
+        }
+        break;
+      }
+      case 'ask_clarification': {
+        addMessage('assistant', input.question_text);
+        speak(input.question_text);
+        break;
+      }
+      default: {
+        addMessage('assistant', "Sorry, I didn't understand — try again.");
+        speak("Sorry, I didn't understand — try again.");
+      }
+    }
+  }
+
+  function findItemByName(name) {
+    if (!name) return null;
+    const target = String(name).toLowerCase().trim();
+    const active = getActiveItems();
+    let match = active.find(i => i.name.toLowerCase() === target);
+    if (match) return match;
+    const f = new Fuse(active, { keys: ['name'], threshold: 0.4, includeScore: true });
+    const results = f.search(target);
+    return results[0] ? results[0].item : null;
+  }
+
+  function respondToFindResult(result) {
+    switch (result.kind) {
+      case 'single': {
+        const msg = `${capitalise(result.item.name)} is in ${locationBreadcrumb(result.item.location)}`;
+        addMessage('assistant', msg);
+        speak(msg);
+        switchTab('inventory');
+        highlightItem(result.item.id);
+        break;
+      }
+      case 'multi': {
+        const txt = `I found ${result.items.length} things matching "${result.term}":`;
+        addMessage('assistant', txt, { cards: result.items });
+        speak(`I found ${result.items.length} things matching ${result.term}. Tap one to see where it is.`);
+        break;
+      }
+      case 'best-with-alts': {
+        const bestText = `Best match: ${capitalise(result.best.name)} in ${locationBreadcrumb(result.best.location)}`;
+        addMessage('assistant', bestText, {
+          subtitle: 'Also found:',
+          cards: result.alternatives
+        });
+        speak(bestText);
+        break;
+      }
+      case 'weak': {
+        addMessage('assistant', 'Did you mean one of these?', { cards: result.items });
+        speak("I'm not sure — did you mean one of these?");
+        break;
+      }
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     CONVERSATION RENDERING
+     ═══════════════════════════════════════════════════════════════ */
+
+  function addMessage(role, text, extra = {}) {
+    state.conversation.push({ role, text, ...extra, ts: Date.now() });
+    renderConversation();
+  }
+
+  function renderConversation() {
+    const el = document.getElementById('conversation');
+    el.innerHTML = '';
+    if (state.conversation.length === 0) {
+      el.innerHTML = `
+        <div class="empty-state">
+          <div class="big">🎤</div>
+          <div>Tap the mic and ask where something is.</div>
+          <div style="margin-top:6px;font-size:14px">e.g. "where are the batteries?"</div>
+        </div>`;
+      return;
+    }
+    for (const m of state.conversation) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + m.role;
+      const textNode = document.createElement('div');
+      textNode.textContent = m.text;
+      div.appendChild(textNode);
+      if (m.subtitle) {
+        const sub = document.createElement('div');
+        sub.className = 'subtitle';
+        sub.textContent = m.subtitle;
+        div.appendChild(sub);
+      }
+      if (m.cards && m.cards.length) {
+        const cards = document.createElement('div');
+        cards.className = 'match-cards';
+        for (const item of m.cards) {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'match-card';
+          const nm = document.createElement('div');
+          nm.className = 'match-card-name';
+          nm.textContent = capitalise(item.name);
+          const lc = document.createElement('div');
+          lc.className = 'match-card-loc';
+          lc.textContent = locationBreadcrumb(item.location);
+          card.appendChild(nm);
+          card.appendChild(lc);
+          card.onclick = () => {
+            switchTab('inventory');
+            highlightItem(item.id);
+          };
+          cards.appendChild(card);
+        }
+        div.appendChild(cards);
+      }
+      el.appendChild(div);
+    }
+    el.scrollTop = el.scrollHeight;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     INVENTORY TREE
+     ═══════════════════════════════════════════════════════════════ */
+
+  function renderInventory(searchFilter = '') {
+    const tree = document.getElementById('inv-tree');
+    if (!tree) return;
+    tree.innerHTML = '';
+    let items = getActiveItems();
+
+    if (searchFilter && searchFilter.trim()) {
+      const results = fuse ? fuse.search(searchFilter.trim()) : [];
+      items = results.map(r => r.item);
+      if (items.length === 0) {
+        tree.innerHTML = '<div class="empty">No matches</div>';
+        return;
+      }
+      for (const item of items) tree.appendChild(itemCard(item));
+      return;
+    }
+
+    if (items.length === 0) {
+      tree.innerHTML = '<div class="empty">No items yet — tap the + button to add the first one.</div>';
+      return;
+    }
+
+    const root = buildLocationTree(items);
+    renderTreeNode(root, tree, 0);
+  }
+
+  function buildLocationTree(items) {
+    const root = { name: '', children: new Map(), items: [] };
+    for (const item of items) {
+      let node = root;
+      for (const part of (item.location || [])) {
+        if (!node.children.has(part)) {
+          node.children.set(part, { name: part, children: new Map(), items: [] });
+        }
+        node = node.children.get(part);
+      }
+      node.items.push(item);
+    }
+    return root;
+  }
+
+  function renderTreeNode(node, parentEl, depth) {
+    const names = Array.from(node.children.keys()).sort((a, b) => a.localeCompare(b));
+    for (const name of names) {
+      const child = node.children.get(name);
+      const group = document.createElement('div');
+      group.className = 'tree-group' + (depth === 0 ? ' expanded' : '');
+
+      const header = document.createElement('button');
+      header.type = 'button';
+      header.className = 'tree-header';
+      const chev = document.createElement('span');
+      chev.innerHTML = '<svg class="tree-chevron" viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4z"/></svg>';
+      header.appendChild(chev.firstChild);
+      const lbl = document.createElement('span');
+      lbl.textContent = name;
+      header.appendChild(lbl);
+      const cnt = document.createElement('span');
+      cnt.className = 'group-count';
+      cnt.textContent = countItemsRecursive(child);
+      header.appendChild(cnt);
+      header.onclick = (e) => {
+        e.stopPropagation();
+        group.classList.toggle('expanded');
+      };
+      group.appendChild(header);
+
+      const childContainer = document.createElement('div');
+      childContainer.className = 'tree-children';
+      renderTreeNode(child, childContainer, depth + 1);
+      group.appendChild(childContainer);
+
+      parentEl.appendChild(group);
+    }
+    const sorted = node.items.slice().sort((a, b) => a.name.localeCompare(b.name));
+    for (const item of sorted) parentEl.appendChild(itemCard(item));
+  }
+
+  function countItemsRecursive(node) {
+    let n = node.items.length;
+    for (const c of node.children.values()) n += countItemsRecursive(c);
+    return n;
+  }
+
+  function itemCard(item) {
+    const div = document.createElement('div');
+    div.className = 'tree-item';
+    div.dataset.itemId = item.id;
+    const date = new Date(item.added).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const nm = document.createElement('div');
+    nm.className = 'tree-item-name';
+    nm.textContent = capitalise(item.name);
+    const lc = document.createElement('div');
+    lc.className = 'tree-item-loc';
+    lc.textContent = locationBreadcrumb(item.location);
+    const dt = document.createElement('div');
+    dt.className = 'tree-item-date';
+    dt.textContent = 'Added ' + date;
+    div.appendChild(nm);
+    div.appendChild(lc);
+    div.appendChild(dt);
+    div.onclick = () => openItemActions(item);
+    return div;
+  }
+
+  function highlightItem(id) {
+    document.getElementById('inv-search').value = '';
+    renderInventory();
+    setTimeout(() => {
+      const el = document.querySelector(`[data-item-id="${id}"]`);
+      if (!el) return;
+      // Expand all ancestor groups.
+      let parent = el.parentElement;
+      while (parent && parent !== document.body) {
+        if (parent.classList && parent.classList.contains('tree-group')) {
+          parent.classList.add('expanded');
+        }
+        parent = parent.parentElement;
+      }
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('highlight');
+      setTimeout(() => el.classList.remove('highlight'), 2000);
+    }, 60);
+  }
+
+  function locationBreadcrumb(loc) {
+    if (!loc || !loc.length) return '(no location)';
+    return loc.join(' › ');
+  }
+  function capitalise(s) {
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     ADD / EDIT ITEM modal (with cascading location pickers)
+     ═══════════════════════════════════════════════════════════════ */
+
+  function openAddItem() {
+    state.editingItemId = null;
+    document.getElementById('add-item-title').textContent = 'Add item';
+    const nameInput = document.getElementById('add-name');
+    nameInput.value = '';
+    nameInput.disabled = false;
+    renderLocPickers('loc-pickers', []);
+    document.getElementById('add-item-modal').classList.remove('hidden');
+    setTimeout(() => nameInput.focus(), 100);
+  }
+
+  function openEditLocation(item) {
+    state.editingItemId = item.id;
+    document.getElementById('add-item-title').textContent = 'Move item';
+    const nameInput = document.getElementById('add-name');
+    nameInput.value = capitalise(item.name);
+    nameInput.disabled = true;
+    renderLocPickers('loc-pickers', item.location || []);
+    document.getElementById('add-item-modal').classList.remove('hidden');
+  }
+
+  function getOptionsAtLevel(prefix) {
+    const items = getActiveItems();
+    const set = new Set();
+    for (const item of items) {
+      const loc = item.location || [];
+      if (loc.length <= prefix.length) continue;
+      let match = true;
+      for (let i = 0; i < prefix.length; i++) {
+        if (loc[i] !== prefix[i]) { match = false; break; }
+      }
+      if (match) set.add(loc[prefix.length]);
+    }
+    let options = Array.from(set);
+    if (prefix.length === 0) {
+      for (const r of DEFAULT_ROOMS) options.push(r);
+      options = Array.from(new Set(options));
+    }
+    return options.sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderLocPickers(containerId, currentPath) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    // Filled rows for what's already chosen
+    for (let i = 0; i < currentPath.length; i++) {
+      container.appendChild(makeLocRow(containerId, i, currentPath.slice(0, i), currentPath[i], currentPath));
+    }
+    // Next empty row (if under max depth)
+    if (currentPath.length < 4) {
+      container.appendChild(makeLocRow(containerId, currentPath.length, currentPath, null, currentPath));
+    }
+  }
+
+  function makeLocRow(containerId, level, prefix, currentValue, fullPath) {
+    const row = document.createElement('div');
+    row.className = 'loc-row';
+    const select = document.createElement('select');
+
+    const options = getOptionsAtLevel(prefix);
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = `— ${LOC_LABELS[level]} —`;
+    select.appendChild(placeholder);
+
+    for (const o of options) {
+      const opt = document.createElement('option');
+      opt.value = o;
+      opt.textContent = o;
+      if (o === currentValue) opt.selected = true;
+      select.appendChild(opt);
+    }
+    const addNew = document.createElement('option');
+    addNew.value = '__new__';
+    addNew.textContent = '+ Add new…';
+    select.appendChild(addNew);
+
+    select.onchange = (e) => {
+      const v = e.target.value;
+      if (v === '__new__') {
+        // Swap select for text input.
+        row.innerHTML = '';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = `New ${LOC_LABELS[level]}`;
+        const commit = () => {
+          const t = input.value.trim();
+          const newPath = prefix.slice();
+          if (t) newPath.push(t);
+          // Preserve any deeper levels the user may have already chosen.
+          for (let i = level + 1; i < fullPath.length; i++) newPath.push(fullPath[i]);
+          renderLocPickers(containerId, newPath);
+        };
+        input.onblur = commit;
+        input.onkeydown = (ev) => {
+          if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+        };
+        row.appendChild(input);
+        input.focus();
+      } else if (v === '') {
+        // User cleared this level — drop it and anything deeper.
+        renderLocPickers(containerId, prefix);
+      } else {
+        const newPath = prefix.slice();
+        newPath.push(v);
+        // Preserve deeper if user is changing an upper level only? Safer to drop deeper.
+        renderLocPickers(containerId, newPath);
+      }
+    };
+
+    row.appendChild(select);
+    return row;
+  }
+
+  function gatherLocationFromPickers(containerId) {
+    const container = document.getElementById(containerId);
+    const path = [];
+    for (const row of container.children) {
+      const select = row.querySelector('select');
+      const input = row.querySelector('input');
+      let v = '';
+      if (select) v = select.value;
+      if (input) v = input.value.trim();
+      if (v && v !== '__new__') path.push(v);
+    }
+    return path;
+  }
+
+  async function saveItemFromModal() {
+    const location = gatherLocationFromPickers('loc-pickers');
+    if (location.length === 0) { toast('Pick at least a room', 'error'); return; }
+
+    if (state.editingItemId) {
+      const item = state.inventory.items.find(i => i.id === state.editingItemId);
+      if (item) {
+        item.location = location;
+        item.lastModified = new Date().toISOString();
+      }
+      toast('Moved', 'success');
+    } else {
+      const name = document.getElementById('add-name').value.trim();
+      if (!name) { toast('Item name needed', 'error'); return; }
+      state.inventory.items.push({
+        id: String(Date.now()),
+        name: name.toLowerCase(),
+        location,
+        added: new Date().toISOString(),
+        lastModified: new Date().toISOString()
+      });
+      toast('Saved', 'success');
+    }
+
+    rebuildFuse();
+    renderInventory();
+    closeModal('add-item-modal');
+    await syncWithJSONBin();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     ITEM action sheet
+     ═══════════════════════════════════════════════════════════════ */
+
+  function openItemActions(item) {
+    state.currentItem = item;
+    document.getElementById('action-item-name').textContent = capitalise(item.name);
+    document.getElementById('action-item-loc').textContent = locationBreadcrumb(item.location);
+    document.getElementById('item-action-modal').classList.remove('hidden');
+  }
+
+  async function deleteCurrentItem() {
+    const item = state.currentItem;
+    if (!item) return;
+    if (!confirm(`Delete "${item.name}"?`)) return;
+    item.deleted = true;
+    item.lastModified = new Date().toISOString();
+    rebuildFuse();
+    renderInventory();
+    closeModal('item-action-modal');
+    toast('Deleted', 'success');
+    await syncWithJSONBin();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SETTINGS tab
+     ═══════════════════════════════════════════════════════════════ */
+
+  function renderSettings() {
+    document.getElementById('set-anthropic-key').value = state.config.anthropicKey;
+    document.getElementById('set-jsonbin-id').value = state.config.jsonbinId;
+    document.getElementById('set-jsonbin-key').value = state.config.jsonbinAccessKey;
+    updateApiUsage();
+  }
+
+  function saveSettingsKeys() {
+    state.config.anthropicKey = document.getElementById('set-anthropic-key').value.trim();
+    state.config.jsonbinId = document.getElementById('set-jsonbin-id').value.trim();
+    state.config.jsonbinAccessKey = document.getElementById('set-jsonbin-key').value.trim();
+    localStorage.setItem(STORAGE.anthropicKey, state.config.anthropicKey);
+    localStorage.setItem(STORAGE.jsonbinId, state.config.jsonbinId);
+    localStorage.setItem(STORAGE.jsonbinAccessKey, state.config.jsonbinAccessKey);
+    toast('Settings saved', 'success');
+  }
+
+  function updateApiUsage() {
+    const el = document.getElementById('api-usage');
+    if (el) el.textContent = `${state.apiCallsThisSession} Claude calls this session`;
+  }
+
+  function exportData() {
+    const blob = new Blob([JSON.stringify(state.inventory, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wherein5-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data || !Array.isArray(data.items)) throw new Error('Invalid format');
+        state.inventory = mergeInventories(state.inventory, data);
+        saveLocalInventory();
+        rebuildFuse();
+        renderInventory();
+        toast('Imported', 'success');
+        await syncWithJSONBin();
+      } catch (e) {
+        toast('Import failed: ' + e.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function clearAllData() {
+    if (!confirm('Delete all inventory? This cannot be undone.')) return;
+    if (!confirm('Really delete everything?')) return;
+    state.inventory = { items: [] };
+    saveLocalInventory();
+    rebuildFuse();
+    renderInventory();
+    toast('All data cleared', 'success');
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     APP BOOT + UI WIRING
+     ═══════════════════════════════════════════════════════════════ */
+
+  function showSetup() {
+    document.getElementById('setup-screen').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('setup-anthropic-key').value = state.config.anthropicKey;
+    document.getElementById('setup-jsonbin-id').value = state.config.jsonbinId;
+    document.getElementById('setup-jsonbin-key').value = state.config.jsonbinAccessKey;
+  }
+
+  function showApp() {
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    rebuildFuse();
+    renderInventory();
+    initVoice();
+    // Initial sync (best-effort)
+    syncWithJSONBin();
+  }
+
+  function saveSetupAndStart() {
+    const k = document.getElementById('setup-anthropic-key').value.trim();
+    const b = document.getElementById('setup-jsonbin-id').value.trim();
+    const a = document.getElementById('setup-jsonbin-key').value.trim();
+    if (!k || !b || !a) { toast('All three fields are needed', 'error'); return; }
+    state.config.anthropicKey = k;
+    state.config.jsonbinId = b;
+    state.config.jsonbinAccessKey = a;
+    localStorage.setItem(STORAGE.anthropicKey, k);
+    localStorage.setItem(STORAGE.jsonbinId, b);
+    localStorage.setItem(STORAGE.jsonbinAccessKey, a);
+    showApp();
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('#tab-bar button').forEach(el => el.classList.remove('active'));
+    const tabEl = document.getElementById('tab-' + name);
+    if (tabEl) tabEl.classList.add('active');
+    const btn = document.querySelector(`#tab-bar button[data-tab="${name}"]`);
+    if (btn) btn.classList.add('active');
+    if (name === 'settings') renderSettings();
+    if (name === 'inventory') renderInventory(document.getElementById('inv-search').value);
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+  }
+
+  function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => { /* offline still works without SW */ });
+    }
+  }
+
+  function attachListeners() {
+    // Tab bar
+    document.querySelectorAll('#tab-bar button').forEach(b => {
+      b.addEventListener('click', () => switchTab(b.dataset.tab));
+    });
+
+    // Voice + text input
+    document.getElementById('mic-btn').addEventListener('click', toggleMic);
+    document.getElementById('text-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const inp = document.getElementById('text-input');
+      const t = inp.value;
+      inp.value = '';
+      handleUserQuery(t);
+    });
+
+    // Inventory
+    document.getElementById('inv-search').addEventListener('input', (e) => {
+      renderInventory(e.target.value);
+    });
+    document.getElementById('fab-add').addEventListener('click', openAddItem);
+
+    // Add/edit modal
+    document.getElementById('save-item-btn').addEventListener('click', saveItemFromModal);
+    document.getElementById('cancel-item-btn').addEventListener('click', () => closeModal('add-item-modal'));
+
+    // Item action sheet
+    document.getElementById('action-edit-btn').addEventListener('click', () => {
+      const item = state.currentItem;
+      closeModal('item-action-modal');
+      if (item) openEditLocation(item);
+    });
+    document.getElementById('action-delete-btn').addEventListener('click', deleteCurrentItem);
+    document.getElementById('action-cancel-btn').addEventListener('click', () => closeModal('item-action-modal'));
+
+    // Setup
+    document.getElementById('setup-btn').addEventListener('click', saveSetupAndStart);
+
+    // Settings
+    document.getElementById('save-keys-btn').addEventListener('click', saveSettingsKeys);
+    document.getElementById('export-btn').addEventListener('click', exportData);
+    document.getElementById('import-input').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) importData(file);
+      e.target.value = '';
+    });
+    document.getElementById('clear-btn').addEventListener('click', clearAllData);
+    document.getElementById('setup-from-settings-btn').addEventListener('click', showSetup);
+
+    // Dismiss modal sheets on overlay tap
+    document.querySelectorAll('.sheet-overlay').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target === el) el.classList.add('hidden');
+      });
+    });
+
+    // Retry sync when user comes back online or refocuses the tab
+    window.addEventListener('online', () => retrySyncIfPending());
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) retrySyncIfPending();
+    });
+  }
+
+  function init() {
+    loadConfig();
+    attachListeners();
+    if (!isConfigured()) showSetup();
+    else showApp();
+    registerServiceWorker();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+
+  </script>
+</body>
+</html>

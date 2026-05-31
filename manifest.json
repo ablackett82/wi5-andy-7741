@@ -1,0 +1,19 @@
+{
+  "name": "Where In 5?",
+  "short_name": "WhereIn5",
+  "description": "Shared family home inventory — controlled by voice and text.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#E8923C",
+  "background_color": "#FFF8EC",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
