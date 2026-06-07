@@ -1,7 +1,7 @@
 // Service worker for Where In 5?
 // Caches the app shell so the app loads offline. API traffic is never cached.
 
-const CACHE_NAME = 'wherein5-v1';
+const CACHE_NAME = 'wherein5-v2';
 const APP_SHELL = [
   './',
   './index.html',

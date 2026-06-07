@@ -1107,9 +1107,10 @@
     syncRetryTimer: null,
     recognition: null,
     lastFinalTranscript: null,
-    currentItem: null,
+    currentItemId: null,
     editingItemId: null,
-    currentLocationPath: []
+    currentLocationPath: [],
+    lastLongPressAt: 0
   };
 
   let fuse = null;
@@ -2074,8 +2075,14 @@
      ITEM action sheet
      ═══════════════════════════════════════════════════════════════ */
 
+  // Always resolve the live item from the array by id — never hold a stale
+  // object reference across a sync that may have rebuilt state.inventory.
+  function getCurrentItem() {
+    return state.inventory.items.find(i => i.id === state.currentItemId) || null;
+  }
+
   function openItemActions(item) {
-    state.currentItem = item;
+    state.currentItemId = item.id;
     document.getElementById('action-item-name').textContent = capitalise(item.name);
     document.getElementById('action-item-loc').textContent = locationBreadcrumb(item.location);
     document.getElementById('action-checkout-btn').textContent =
@@ -2084,7 +2091,7 @@
   }
 
   async function checkOutItem() {
-    const item = state.currentItem;
+    const item = getCurrentItem();
     if (!item) return;
     item.checkedOut = !item.checkedOut;
     item.lastModified = new Date().toISOString();
@@ -2096,7 +2103,7 @@
   }
 
   function openEditItem() {
-    const item = state.currentItem;
+    const item = getCurrentItem();
     if (!item) return;
     closeModal('item-action-modal');
     document.getElementById('edit-item-name').value = capitalise(item.name);
@@ -2106,7 +2113,7 @@
   }
 
   async function saveEditItem() {
-    const item = state.currentItem;
+    const item = getCurrentItem();
     if (!item) return;
     const name = document.getElementById('edit-item-name').value.trim();
     const qty = parseInt(document.getElementById('edit-item-qty').value, 10);
@@ -2122,7 +2129,7 @@
   }
 
   async function deleteCurrentItem() {
-    const item = state.currentItem;
+    const item = getCurrentItem();
     if (!item) return;
     if (!confirm(`Delete "${item.name}"?`)) return;
     item.deleted = true;
@@ -2149,6 +2156,10 @@
       timer = setTimeout(() => {
         timer = null;
         didFire = true;
+        // Stamp the time so the synthesized "ghost click" fired on touch-release
+        // (which can land on a modal backdrop opened by this callback) is ignored
+        // by the overlay-dismiss handler.
+        state.lastLongPressAt = Date.now();
         callback(e);
       }, 500);
     });
@@ -2169,6 +2180,7 @@
 
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+      state.lastLongPressAt = Date.now();
       callback(e);
     });
   }
@@ -2459,7 +2471,7 @@
 
     // Item action sheet
     document.getElementById('action-move-btn').addEventListener('click', () => {
-      const item = state.currentItem;
+      const item = getCurrentItem();
       closeModal('item-action-modal');
       if (item) openEditLocation(item);
     });
@@ -2515,6 +2527,9 @@
     // Dismiss modal sheets on overlay tap
     document.querySelectorAll('.sheet-overlay').forEach(el => {
       el.addEventListener('click', (e) => {
+        // Ignore the ghost click that immediately follows a long-press which
+        // just opened this sheet (otherwise the sheet closes on finger release).
+        if (Date.now() - state.lastLongPressAt < 700) return;
         if (e.target === el) el.classList.add('hidden');
       });
     });
