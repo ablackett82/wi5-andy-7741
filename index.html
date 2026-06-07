@@ -396,6 +396,9 @@
       color: var(--charcoal);
       font-size: 16px;
       min-height: 44px;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
     .tree-header:active { background: var(--cream-dark); }
 
@@ -430,6 +433,13 @@
       background: var(--highlight);
       border-color: #E8C935;
     }
+    .tree-item.checked-out { opacity: 0.42; }
+    .tree-item.checked-out .tree-item-name::after {
+      content: ' — out';
+      font-weight: 400;
+      font-size: 13px;
+      color: var(--soft-gray);
+    }
     .tree-item-name { font-weight: 600; }
     .tree-item-loc {
       font-size: 13px;
@@ -440,6 +450,18 @@
       font-size: 12px;
       color: var(--soft-gray);
       margin-top: 2px;
+    }
+
+    .qty-badge {
+      display: inline-block;
+      background: var(--amber-light);
+      color: var(--charcoal);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
     }
 
     .group-count {
@@ -699,6 +721,115 @@
     }
     .action-list button:active { background: var(--cream-dark); }
     .action-list button.danger { color: var(--danger); }
+
+    /* ──────────────────────────────────────────────
+       Add-to-location form
+       ────────────────────────────────────────────── */
+    .add-loc-items {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 12px 0 8px;
+    }
+    .add-loc-item-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .add-loc-item-row input {
+      flex: 1;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      min-height: 44px;
+    }
+    .btn-add-row {
+      background: none;
+      border: 1px dashed var(--amber);
+      color: var(--amber-dark);
+      border-radius: var(--radius);
+      padding: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      width: 100%;
+      text-align: center;
+      min-height: 44px;
+      margin-bottom: 4px;
+    }
+    .btn-add-row:active { background: var(--cream-dark); }
+
+    /* ──────────────────────────────────────────────
+       Remove-from-location checklist
+       ────────────────────────────────────────────── */
+    .remove-loc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 12px 0;
+      max-height: 45vh;
+      overflow-y: auto;
+    }
+    .remove-loc-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      min-height: 48px;
+    }
+    .remove-loc-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      accent-color: var(--amber-dark);
+    }
+    .remove-loc-item-info { flex: 1; }
+    .remove-loc-item-name { font-weight: 600; }
+    .remove-loc-item-path { font-size: 13px; color: var(--soft-gray); margin-top: 2px; }
+
+    /* ──────────────────────────────────────────────
+       Edit item sheet — qty input
+       ────────────────────────────────────────────── */
+    .qty-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 6px;
+    }
+    .qty-row input[type="number"] {
+      width: 90px;
+      flex: none;
+      text-align: center;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      min-height: 48px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .qty-stepper {
+      display: flex;
+      gap: 6px;
+    }
+    .qty-stepper button {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: white;
+      font-size: 22px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qty-stepper button:active { background: var(--cream-dark); }
   </style>
 </head>
 <body>
@@ -865,6 +996,7 @@
     </div>
   </div>
 
+  <!-- Item actions sheet -->
   <div id="item-action-modal" class="sheet-overlay hidden">
     <div class="sheet">
       <div class="item-action-info">
@@ -872,11 +1004,76 @@
         <div class="loc" id="action-item-loc"></div>
       </div>
       <div class="action-list">
-        <button id="action-edit-btn" type="button">Move to another location</button>
+        <button id="action-move-btn" type="button">Move to another location</button>
+        <button id="action-checkout-btn" type="button">Check out</button>
+        <button id="action-edit-btn" type="button">Edit name / quantity</button>
         <button id="action-delete-btn" type="button" class="danger">Delete item</button>
       </div>
       <div class="sheet-actions" style="margin-top:8px;">
         <button id="action-cancel-btn" class="btn-secondary" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit item sheet -->
+  <div id="edit-item-modal" class="sheet-overlay hidden">
+    <div class="sheet">
+      <h2>Edit item</h2>
+      <label for="edit-item-name">Name</label>
+      <input id="edit-item-name" type="text" autocomplete="off">
+      <label>Quantity</label>
+      <div class="qty-row">
+        <input id="edit-item-qty" type="number" min="1" value="1">
+        <div class="qty-stepper">
+          <button id="qty-dec" type="button">−</button>
+          <button id="qty-inc" type="button">+</button>
+        </div>
+      </div>
+      <div class="sheet-actions">
+        <button id="edit-item-cancel" class="btn-secondary" type="button">Cancel</button>
+        <button id="edit-item-save" class="btn-primary" type="button" style="margin-top:0;">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Location context sheet -->
+  <div id="loc-actions-modal" class="sheet-overlay hidden">
+    <div class="sheet">
+      <h2 id="loc-actions-title">Location</h2>
+      <p class="sheet-sub" id="loc-actions-path"></p>
+      <div class="action-list">
+        <button id="loc-action-add" type="button">Add items here</button>
+        <button id="loc-action-remove" type="button" class="danger">Remove items from here</button>
+      </div>
+      <div class="sheet-actions" style="margin-top:8px;">
+        <button id="loc-actions-cancel" class="btn-secondary" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add items to location sheet -->
+  <div id="add-to-loc-modal" class="sheet-overlay hidden">
+    <div class="sheet">
+      <h2>Add items</h2>
+      <p class="sheet-sub" id="add-to-loc-path"></p>
+      <div id="add-loc-items" class="add-loc-items"></div>
+      <button id="add-loc-more-btn" class="btn-add-row" type="button">+ Add another item</button>
+      <div class="sheet-actions">
+        <button id="add-to-loc-cancel" class="btn-secondary" type="button">Cancel</button>
+        <button id="add-to-loc-save" class="btn-primary" type="button" style="margin-top:0;">Save all</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove items from location sheet -->
+  <div id="remove-from-loc-modal" class="sheet-overlay hidden">
+    <div class="sheet">
+      <h2>Remove items</h2>
+      <p class="sheet-sub" id="remove-from-loc-path"></p>
+      <div id="remove-loc-list" class="remove-loc-list"></div>
+      <div class="sheet-actions">
+        <button id="remove-from-loc-cancel" class="btn-secondary" type="button">Cancel</button>
+        <button id="remove-from-loc-save" class="btn-danger" type="button" style="margin-top:0;">Delete selected</button>
       </div>
     </div>
   </div>
@@ -907,10 +1104,12 @@
     conversation: [],
     apiCallsThisSession: 0,
     syncPending: false,
+    syncRetryTimer: null,
     recognition: null,
     lastFinalTranscript: null,
     currentItem: null,
-    editingItemId: null
+    editingItemId: null,
+    currentLocationPath: []
   };
 
   let fuse = null;
@@ -965,6 +1164,10 @@
      Conflict strategy: union by id, prefer the most recent
      lastModified timestamp. Deletes are tombstones (deleted=true) so
      they survive merge with a remote copy that still has the item.
+
+     silent=true  → suppress error toast and show no success toast.
+                    Used for automatic background syncs so the user
+                    only sees toasts when they actively save something.
      ═══════════════════════════════════════════════════════════════ */
 
   function mergeInventories(local, remote) {
@@ -980,11 +1183,17 @@
     return { items: Array.from(map.values()) };
   }
 
-  async function syncWithJSONBin() {
+  async function syncWithJSONBin(silent = false) {
     if (!state.config.jsonbinId || !state.config.jsonbinAccessKey) {
       saveLocalInventory();
       return;
     }
+    // Clear any scheduled retry since we're syncing now.
+    if (state.syncRetryTimer) {
+      clearTimeout(state.syncRetryTimer);
+      state.syncRetryTimer = null;
+    }
+    const wasPending = state.syncPending;
     showSync(true);
     try {
       const getResp = await fetch(
@@ -1018,23 +1227,32 @@
       );
       if (!putResp.ok) throw new Error('PUT ' + putResp.status);
       state.syncPending = false;
-      // Re-render anything that depends on inventory
       renderInventory(document.getElementById('inv-search').value);
+      // Show a quiet "synced" toast only when catching up after a failure,
+      // and only for non-silent calls (i.e. user-triggered saves).
+      if (wasPending && !silent) toast('Synced', 'success');
     } catch (err) {
       state.syncPending = true;
       saveLocalInventory();
-      toast("Saved locally — couldn't sync. Will retry.", 'error');
+      if (!silent) toast("Saved locally — couldn't sync. Will retry.", 'error');
+      // Schedule a background retry in 20 s if nothing else triggers one first.
+      if (!state.syncRetryTimer) {
+        state.syncRetryTimer = setTimeout(() => {
+          state.syncRetryTimer = null;
+          syncWithJSONBin(true);
+        }, 20000);
+      }
     } finally {
       showSync(false);
     }
   }
 
   async function retrySyncIfPending() {
-    if (state.syncPending) await syncWithJSONBin();
+    if (state.syncPending) await syncWithJSONBin(true);
   }
 
   /* ═══════════════════════════════════════════════════════════════
-     VOICE — Web Speech API (recognition + synthesis)
+     VOICE — Web Speech API (recognition only; synthesis disabled)
      ═══════════════════════════════════════════════════════════════ */
 
   function initVoice() {
@@ -1100,17 +1318,9 @@
     }
   }
 
-  function speak(text) {
-    if (!('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-GB';
-      u.rate = 1.0;
-      u.pitch = 1.0;
-      window.speechSynthesis.speak(u);
-    } catch { /* ignore */ }
-  }
+  // Audio output is disabled — function kept as a no-op so existing call sites
+  // don't need changing.
+  function speak() { }
 
   /* ═══════════════════════════════════════════════════════════════
      FUSE SEARCH
@@ -1148,7 +1358,7 @@
   const UPDATE_PATTERNS = [
     /\bactually\b/i, /\bno wait\b/i, /\bmoved\b/i, /\bnow in\b/i
   ];
-  const FIND_STARTER = /^\s*(where|find|locate|look for|show me|what(’|')?s in|whats in)\b/i;
+  const FIND_STARTER = /^\s*(where|find|locate|look for|show me|what('|')?s in|whats in)\b/i;
 
   function classifyIntent(text) {
     const t = text.trim();
@@ -1165,7 +1375,7 @@
   function cleanFindTerm(text) {
     return text
       .toLowerCase()
-      .replace(/^\s*(where (is|are|s|'s)|find|locate|look for|show me|what(’|')?s in|whats in)\s+/i, '')
+      .replace(/^\s*(where (is|are|s|'s)|find|locate|look for|show me|what('|')?s in|whats in)\s+/i, '')
       .replace(/^\s*(the|a|an|my|our|some)\s+/i, '')
       .replace(/\s+please\s*$/i, '')
       .replace(/[?.!,]+\s*$/, '')
@@ -1186,7 +1396,6 @@
     const top = results[0];
     const second = results[1];
 
-    // Single confident match: very strong, OR strong with big gap to next.
     const singleConfident =
       top.score < 0.3 ||
       (top.score < 0.4 && (!second || (second.score - top.score) > 0.25));
@@ -1194,19 +1403,16 @@
       return { kind: 'single', item: top.item, term };
     }
 
-    // Multiple close matches (2+ with score < 0.4).
     const close = results.filter(r => r.score < 0.4);
     if (close.length >= 2) {
       return { kind: 'multi', items: close.slice(0, 6).map(r => r.item), term };
     }
 
-    // Best guess + weaker alternatives.
     if (top.score < 0.4) {
       const alts = results.filter(r => r.score >= 0.4 && r.score <= 0.55).slice(0, 4);
       return { kind: 'best-with-alts', best: top.item, alternatives: alts.map(r => r.item), term };
     }
 
-    // Weak-only suggestions.
     if (top.score <= 0.6) {
       return {
         kind: 'weak',
@@ -1235,7 +1441,11 @@
             items: { type: 'string' },
             description: '1–4 levels deep, Title Case. e.g. ["Kitchen", "Drawer", "Top", "Back"].'
           },
-          confirmation_text: { type: 'string', description: 'Short, warm reply to read aloud.' }
+          quantity: {
+            type: 'integer',
+            description: 'How many. Omit or set to 1 unless the user mentions a specific count.'
+          },
+          confirmation_text: { type: 'string', description: 'Short, warm reply.' }
         },
         required: ['name', 'location_array', 'confirmation_text']
       }
@@ -1300,6 +1510,8 @@
       '',
       'Keep confirmation_text short, warm, and natural — like a helpful family member, not a robot.',
       '',
+      'Items may have checkedOut:true (temporarily removed from the home) and quantity>1.',
+      '',
       'Current inventory:',
       JSON.stringify({ items: getActiveItems() }, null, 2)
     ].join('\n');
@@ -1361,7 +1573,6 @@
     text = text.trim();
     addMessage('user', text);
 
-    // Retry any pending sync on user action.
     retrySyncIfPending().catch(() => {});
 
     const intent = classifyIntent(text);
@@ -1372,7 +1583,6 @@
         respondToFindResult(local);
         return;
       }
-      // Local didn't yield — fall through to Claude.
     }
 
     const claudeResp = await callClaude(text);
@@ -1383,28 +1593,28 @@
   async function handleClaudeResponse(resp) {
     if (resp.kind === 'plain') {
       addMessage('assistant', resp.text);
-      speak(resp.text);
       return;
     }
     const { name, input } = resp;
     switch (name) {
       case 'store_item': {
+        const qty = (input.quantity && Number.isInteger(input.quantity) && input.quantity > 1)
+          ? input.quantity : 1;
         const item = {
           id: String(Date.now()),
           name: (input.name || '').toLowerCase().trim(),
           location: input.location_array || [],
+          quantity: qty,
           added: new Date().toISOString(),
           lastModified: new Date().toISOString()
         };
         if (!item.name || !item.location.length) {
           addMessage('assistant', "Sorry, I need both an item and a location.");
-          speak("Sorry, I need both an item and a location.");
           return;
         }
         state.inventory.items.push(item);
         rebuildFuse();
         addMessage('assistant', input.confirmation_text);
-        speak(input.confirmation_text);
         renderInventory();
         await syncWithJSONBin();
         break;
@@ -1416,13 +1626,10 @@
           match.lastModified = new Date().toISOString();
           rebuildFuse();
           addMessage('assistant', input.confirmation_text);
-          speak(input.confirmation_text);
           renderInventory();
           await syncWithJSONBin();
         } else {
-          const msg = `Couldn't find "${input.item_name}" to remove.`;
-          addMessage('assistant', msg);
-          speak(msg);
+          addMessage('assistant', `Couldn't find "${input.item_name}" to remove.`);
         }
         break;
       }
@@ -1433,13 +1640,10 @@
           match.lastModified = new Date().toISOString();
           rebuildFuse();
           addMessage('assistant', input.confirmation_text);
-          speak(input.confirmation_text);
           renderInventory();
           await syncWithJSONBin();
         } else {
-          const msg = `Couldn't find "${input.item_name}" to move.`;
-          addMessage('assistant', msg);
-          speak(msg);
+          addMessage('assistant', `Couldn't find "${input.item_name}" to move.`);
         }
         break;
       }
@@ -1448,20 +1652,16 @@
         if (local) {
           respondToFindResult(local);
         } else {
-          const msg = input.confirmation_text || "I couldn't find that.";
-          addMessage('assistant', msg);
-          speak(msg);
+          addMessage('assistant', input.confirmation_text || "I couldn't find that.");
         }
         break;
       }
       case 'ask_clarification': {
         addMessage('assistant', input.question_text);
-        speak(input.question_text);
         break;
       }
       default: {
         addMessage('assistant', "Sorry, I didn't understand — try again.");
-        speak("Sorry, I didn't understand — try again.");
       }
     }
   }
@@ -1482,15 +1682,12 @@
       case 'single': {
         const msg = `${capitalise(result.item.name)} is in ${locationBreadcrumb(result.item.location)}`;
         addMessage('assistant', msg);
-        speak(msg);
         switchTab('inventory');
         highlightItem(result.item.id);
         break;
       }
       case 'multi': {
-        const txt = `I found ${result.items.length} things matching "${result.term}":`;
-        addMessage('assistant', txt, { cards: result.items });
-        speak(`I found ${result.items.length} things matching ${result.term}. Tap one to see where it is.`);
+        addMessage('assistant', `I found ${result.items.length} things matching "${result.term}":`, { cards: result.items });
         break;
       }
       case 'best-with-alts': {
@@ -1499,12 +1696,10 @@
           subtitle: 'Also found:',
           cards: result.alternatives
         });
-        speak(bestText);
         break;
       }
       case 'weak': {
         addMessage('assistant', 'Did you mean one of these?', { cards: result.items });
-        speak("I'm not sure — did you mean one of these?");
         break;
       }
     }
@@ -1598,7 +1793,7 @@
     }
 
     const root = buildLocationTree(items);
-    renderTreeNode(root, tree, 0);
+    renderTreeNode(root, tree, 0, []);
   }
 
   function buildLocationTree(items) {
@@ -1616,10 +1811,11 @@
     return root;
   }
 
-  function renderTreeNode(node, parentEl, depth) {
+  function renderTreeNode(node, parentEl, depth, pathPrefix) {
     const names = Array.from(node.children.keys()).sort((a, b) => a.localeCompare(b));
     for (const name of names) {
       const child = node.children.get(name);
+      const currentPath = [...pathPrefix, name];
       const group = document.createElement('div');
       group.className = 'tree-group' + (depth === 0 ? ' expanded' : '');
 
@@ -1640,11 +1836,14 @@
         e.stopPropagation();
         group.classList.toggle('expanded');
       };
+
+      addLongPress(header, () => openLocationContext(currentPath));
+
       group.appendChild(header);
 
       const childContainer = document.createElement('div');
       childContainer.className = 'tree-children';
-      renderTreeNode(child, childContainer, depth + 1);
+      renderTreeNode(child, childContainer, depth + 1, currentPath);
       group.appendChild(childContainer);
 
       parentEl.appendChild(group);
@@ -1661,12 +1860,18 @@
 
   function itemCard(item) {
     const div = document.createElement('div');
-    div.className = 'tree-item';
+    div.className = 'tree-item' + (item.checkedOut ? ' checked-out' : '');
     div.dataset.itemId = item.id;
     const date = new Date(item.added).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const nm = document.createElement('div');
     nm.className = 'tree-item-name';
     nm.textContent = capitalise(item.name);
+    if (item.quantity && item.quantity > 1) {
+      const badge = document.createElement('span');
+      badge.className = 'qty-badge';
+      badge.textContent = '×' + item.quantity;
+      nm.appendChild(badge);
+    }
     const lc = document.createElement('div');
     lc.className = 'tree-item-loc';
     lc.textContent = locationBreadcrumb(item.location);
@@ -1686,7 +1891,6 @@
     setTimeout(() => {
       const el = document.querySelector(`[data-item-id="${id}"]`);
       if (!el) return;
-      // Expand all ancestor groups.
       let parent = el.parentElement;
       while (parent && parent !== document.body) {
         if (parent.classList && parent.classList.contains('tree-group')) {
@@ -1757,11 +1961,9 @@
   function renderLocPickers(containerId, currentPath) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-    // Filled rows for what's already chosen
     for (let i = 0; i < currentPath.length; i++) {
       container.appendChild(makeLocRow(containerId, i, currentPath.slice(0, i), currentPath[i], currentPath));
     }
-    // Next empty row (if under max depth)
     if (currentPath.length < 4) {
       container.appendChild(makeLocRow(containerId, currentPath.length, currentPath, null, currentPath));
     }
@@ -1793,7 +1995,6 @@
     select.onchange = (e) => {
       const v = e.target.value;
       if (v === '__new__') {
-        // Swap select for text input.
         row.innerHTML = '';
         const input = document.createElement('input');
         input.type = 'text';
@@ -1802,7 +2003,6 @@
           const t = input.value.trim();
           const newPath = prefix.slice();
           if (t) newPath.push(t);
-          // Preserve any deeper levels the user may have already chosen.
           for (let i = level + 1; i < fullPath.length; i++) newPath.push(fullPath[i]);
           renderLocPickers(containerId, newPath);
         };
@@ -1813,12 +2013,10 @@
         row.appendChild(input);
         input.focus();
       } else if (v === '') {
-        // User cleared this level — drop it and anything deeper.
         renderLocPickers(containerId, prefix);
       } else {
         const newPath = prefix.slice();
         newPath.push(v);
-        // Preserve deeper if user is changing an upper level only? Safer to drop deeper.
         renderLocPickers(containerId, newPath);
       }
     };
@@ -1859,6 +2057,7 @@
         id: String(Date.now()),
         name: name.toLowerCase(),
         location,
+        quantity: 1,
         added: new Date().toISOString(),
         lastModified: new Date().toISOString()
       });
@@ -1879,7 +2078,47 @@
     state.currentItem = item;
     document.getElementById('action-item-name').textContent = capitalise(item.name);
     document.getElementById('action-item-loc').textContent = locationBreadcrumb(item.location);
+    document.getElementById('action-checkout-btn').textContent =
+      item.checkedOut ? 'Check back in' : 'Check out';
     document.getElementById('item-action-modal').classList.remove('hidden');
+  }
+
+  async function checkOutItem() {
+    const item = state.currentItem;
+    if (!item) return;
+    item.checkedOut = !item.checkedOut;
+    item.lastModified = new Date().toISOString();
+    rebuildFuse();
+    renderInventory();
+    closeModal('item-action-modal');
+    toast(item.checkedOut ? 'Checked out' : 'Checked back in', 'success');
+    await syncWithJSONBin();
+  }
+
+  function openEditItem() {
+    const item = state.currentItem;
+    if (!item) return;
+    closeModal('item-action-modal');
+    document.getElementById('edit-item-name').value = capitalise(item.name);
+    document.getElementById('edit-item-qty').value = item.quantity || 1;
+    document.getElementById('edit-item-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('edit-item-name').focus(), 100);
+  }
+
+  async function saveEditItem() {
+    const item = state.currentItem;
+    if (!item) return;
+    const name = document.getElementById('edit-item-name').value.trim();
+    const qty = parseInt(document.getElementById('edit-item-qty').value, 10);
+    if (!name) { toast('Name needed', 'error'); return; }
+    item.name = name.toLowerCase();
+    item.quantity = (!isNaN(qty) && qty >= 1) ? qty : 1;
+    item.lastModified = new Date().toISOString();
+    rebuildFuse();
+    renderInventory();
+    closeModal('edit-item-modal');
+    toast('Saved', 'success');
+    await syncWithJSONBin();
   }
 
   async function deleteCurrentItem() {
@@ -1892,6 +2131,179 @@
     renderInventory();
     closeModal('item-action-modal');
     toast('Deleted', 'success');
+    await syncWithJSONBin();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LONG PRESS UTILITY
+     Fires callback after 500 ms hold; prevents the subsequent click.
+     Also responds to contextmenu (desktop right-click / testing).
+     ═══════════════════════════════════════════════════════════════ */
+
+  function addLongPress(el, callback) {
+    let timer = null;
+    let didFire = false;
+
+    el.addEventListener('touchstart', (e) => {
+      didFire = false;
+      timer = setTimeout(() => {
+        timer = null;
+        didFire = true;
+        callback(e);
+      }, 500);
+    });
+
+    el.addEventListener('touchend', (e) => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (didFire) { e.preventDefault(); didFire = false; }
+    });
+
+    el.addEventListener('touchmove', () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+    }, { passive: true });
+
+    el.addEventListener('touchcancel', () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      didFire = false;
+    });
+
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      callback(e);
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     LOCATION CONTEXT — long-press actions on a tree header
+     ═══════════════════════════════════════════════════════════════ */
+
+  function openLocationContext(path) {
+    state.currentLocationPath = path;
+    document.getElementById('loc-actions-title').textContent = path[path.length - 1] || 'Location';
+    document.getElementById('loc-actions-path').textContent = path.join(' › ');
+    document.getElementById('loc-actions-modal').classList.remove('hidden');
+  }
+
+  function openAddToLocation() {
+    const path = state.currentLocationPath;
+    closeModal('loc-actions-modal');
+    document.getElementById('add-to-loc-path').textContent = path.join(' › ');
+    const container = document.getElementById('add-loc-items');
+    container.innerHTML = '';
+    addLocItemRow(container);
+    document.getElementById('add-to-loc-modal').classList.remove('hidden');
+    setTimeout(() => {
+      const first = container.querySelector('input');
+      if (first) first.focus();
+    }, 150);
+  }
+
+  function addLocItemRow(container) {
+    const row = document.createElement('div');
+    row.className = 'add-loc-item-row';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Item name';
+    input.autocomplete = 'off';
+    row.appendChild(input);
+    container.appendChild(row);
+    return input;
+  }
+
+  async function saveAddToLocation() {
+    const path = state.currentLocationPath;
+    const container = document.getElementById('add-loc-items');
+    const names = [];
+    for (const row of container.children) {
+      const input = row.querySelector('input');
+      if (input) {
+        const v = input.value.trim();
+        if (v) names.push(v.toLowerCase());
+      }
+    }
+    if (names.length === 0) { toast('Enter at least one item name', 'error'); return; }
+
+    const now = Date.now();
+    for (let i = 0; i < names.length; i++) {
+      state.inventory.items.push({
+        id: String(now + i),
+        name: names[i],
+        location: path,
+        quantity: 1,
+        added: new Date(now + i).toISOString(),
+        lastModified: new Date(now + i).toISOString()
+      });
+    }
+    rebuildFuse();
+    renderInventory();
+    closeModal('add-to-loc-modal');
+    toast(`Added ${names.length} item${names.length > 1 ? 's' : ''}`, 'success');
+    await syncWithJSONBin();
+  }
+
+  function openRemoveFromLocation() {
+    const path = state.currentLocationPath;
+    closeModal('loc-actions-modal');
+    document.getElementById('remove-from-loc-path').textContent = path.join(' › ');
+
+    // All active items in this subtree (matching path prefix)
+    const items = getActiveItems().filter(item => {
+      const loc = item.location || [];
+      if (loc.length < path.length) return false;
+      for (let i = 0; i < path.length; i++) {
+        if (loc[i] !== path[i]) return false;
+      }
+      return true;
+    }).sort((a, b) => a.name.localeCompare(b.name));
+
+    const list = document.getElementById('remove-loc-list');
+    list.innerHTML = '';
+
+    if (items.length === 0) {
+      list.innerHTML = '<div class="empty" style="padding:20px 0;">No items here</div>';
+    } else {
+      for (const item of items) {
+        const row = document.createElement('label');
+        row.className = 'remove-loc-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = item.id;
+        const info = document.createElement('div');
+        info.className = 'remove-loc-item-info';
+        const nm = document.createElement('div');
+        nm.className = 'remove-loc-item-name';
+        nm.textContent = capitalise(item.name);
+        const pth = document.createElement('div');
+        pth.className = 'remove-loc-item-path';
+        pth.textContent = locationBreadcrumb(item.location);
+        info.appendChild(nm);
+        info.appendChild(pth);
+        row.appendChild(cb);
+        row.appendChild(info);
+        list.appendChild(row);
+      }
+    }
+
+    document.getElementById('remove-from-loc-modal').classList.remove('hidden');
+  }
+
+  async function saveRemoveFromLocation() {
+    const list = document.getElementById('remove-loc-list');
+    const checked = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+    if (checked.length === 0) { toast('Select items to delete', 'error'); return; }
+    if (!confirm(`Delete ${checked.length} item${checked.length > 1 ? 's' : ''}?`)) return;
+
+    for (const id of checked) {
+      const item = state.inventory.items.find(i => i.id === id);
+      if (item) {
+        item.deleted = true;
+        item.lastModified = new Date().toISOString();
+      }
+    }
+    rebuildFuse();
+    renderInventory();
+    closeModal('remove-from-loc-modal');
+    toast(`Deleted ${checked.length} item${checked.length > 1 ? 's' : ''}`, 'success');
     await syncWithJSONBin();
   }
 
@@ -1980,8 +2392,8 @@
     rebuildFuse();
     renderInventory();
     initVoice();
-    // Initial sync (best-effort)
-    syncWithJSONBin();
+    // Silent initial sync — don't alarm the user if network isn't ready yet.
+    syncWithJSONBin(true);
   }
 
   function saveSetupAndStart() {
@@ -2041,18 +2453,50 @@
     });
     document.getElementById('fab-add').addEventListener('click', openAddItem);
 
-    // Add/edit modal
+    // Add/move modal
     document.getElementById('save-item-btn').addEventListener('click', saveItemFromModal);
     document.getElementById('cancel-item-btn').addEventListener('click', () => closeModal('add-item-modal'));
 
     // Item action sheet
-    document.getElementById('action-edit-btn').addEventListener('click', () => {
+    document.getElementById('action-move-btn').addEventListener('click', () => {
       const item = state.currentItem;
       closeModal('item-action-modal');
       if (item) openEditLocation(item);
     });
+    document.getElementById('action-checkout-btn').addEventListener('click', checkOutItem);
+    document.getElementById('action-edit-btn').addEventListener('click', openEditItem);
     document.getElementById('action-delete-btn').addEventListener('click', deleteCurrentItem);
     document.getElementById('action-cancel-btn').addEventListener('click', () => closeModal('item-action-modal'));
+
+    // Edit item sheet
+    document.getElementById('edit-item-cancel').addEventListener('click', () => closeModal('edit-item-modal'));
+    document.getElementById('edit-item-save').addEventListener('click', saveEditItem);
+    document.getElementById('qty-dec').addEventListener('click', () => {
+      const inp = document.getElementById('edit-item-qty');
+      inp.value = Math.max(1, (parseInt(inp.value, 10) || 1) - 1);
+    });
+    document.getElementById('qty-inc').addEventListener('click', () => {
+      const inp = document.getElementById('edit-item-qty');
+      inp.value = (parseInt(inp.value, 10) || 1) + 1;
+    });
+
+    // Location context sheet
+    document.getElementById('loc-actions-cancel').addEventListener('click', () => closeModal('loc-actions-modal'));
+    document.getElementById('loc-action-add').addEventListener('click', openAddToLocation);
+    document.getElementById('loc-action-remove').addEventListener('click', openRemoveFromLocation);
+
+    // Add-to-location sheet
+    document.getElementById('add-to-loc-cancel').addEventListener('click', () => closeModal('add-to-loc-modal'));
+    document.getElementById('add-to-loc-save').addEventListener('click', saveAddToLocation);
+    document.getElementById('add-loc-more-btn').addEventListener('click', () => {
+      const container = document.getElementById('add-loc-items');
+      const input = addLocItemRow(container);
+      input.focus();
+    });
+
+    // Remove-from-location sheet
+    document.getElementById('remove-from-loc-cancel').addEventListener('click', () => closeModal('remove-from-loc-modal'));
+    document.getElementById('remove-from-loc-save').addEventListener('click', saveRemoveFromLocation);
 
     // Setup
     document.getElementById('setup-btn').addEventListener('click', saveSetupAndStart);
@@ -2075,11 +2519,12 @@
       });
     });
 
-    // Retry sync when user comes back online or refocuses the tab
-    window.addEventListener('online', () => retrySyncIfPending());
+    // Always do a full sync when the tab becomes visible — picks up changes from
+    // the other phone even when nothing is locally pending.
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) retrySyncIfPending();
+      if (!document.hidden) syncWithJSONBin(true);
     });
+    window.addEventListener('online', () => syncWithJSONBin(true));
   }
 
   function init() {
