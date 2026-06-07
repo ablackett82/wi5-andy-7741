@@ -1976,6 +1976,14 @@
     const select = document.createElement('select');
 
     const options = getOptionsAtLevel(prefix);
+    // A just-created room/sub-location won't be in DEFAULT_ROOMS or in any
+    // existing item yet, so make sure the current value is always selectable —
+    // otherwise the rebuilt <select> falls back to the empty placeholder and
+    // the location is lost on save.
+    if (currentValue && !options.includes(currentValue)) {
+      options.push(currentValue);
+      options.sort((a, b) => a.localeCompare(b));
+    }
     const placeholder = document.createElement('option');
     placeholder.value = '';
     placeholder.textContent = `— ${LOC_LABELS[level]} —`;
