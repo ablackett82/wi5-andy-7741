@@ -569,6 +569,18 @@
     .loc-row select, .loc-row input {
       flex: 1;
     }
+    .loc-add-ok {
+      flex: 0 0 auto;
+      width: 46px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--amber);
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .loc-add-ok:active { background: var(--amber-dark); }
 
     /* ──────────────────────────────────────────────
        Settings tab
@@ -1002,6 +1014,7 @@
       <div class="item-action-info">
         <div class="name" id="action-item-name"></div>
         <div class="loc" id="action-item-loc"></div>
+        <div class="loc" id="action-item-status"></div>
       </div>
       <div class="action-list">
         <button id="action-move-btn" type="button">Move to another location</button>
@@ -1032,6 +1045,32 @@
       <div class="sheet-actions">
         <button id="edit-item-cancel" class="btn-secondary" type="button">Cancel</button>
         <button id="edit-item-save" class="btn-primary" type="button" style="margin-top:0;">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Check in / out sheet -->
+  <div id="checkout-modal" class="sheet-overlay hidden">
+    <div class="sheet">
+      <h2>Check in / out</h2>
+      <div class="item-action-info">
+        <div class="name" id="checkout-item-name"></div>
+        <div class="loc" id="checkout-status"></div>
+      </div>
+      <label>How many?</label>
+      <div class="qty-row">
+        <input id="checkout-qty" type="number" min="1" value="1">
+        <div class="qty-stepper">
+          <button id="checkout-dec" type="button">−</button>
+          <button id="checkout-inc" type="button">+</button>
+        </div>
+      </div>
+      <div class="sheet-actions">
+        <button id="checkout-in-btn" class="btn-secondary" type="button">Check back in</button>
+        <button id="checkout-out-btn" class="btn-primary" type="button" style="margin-top:0;">Check out</button>
+      </div>
+      <div class="sheet-actions" style="margin-top:8px;">
+        <button id="checkout-cancel" class="btn-secondary" type="button">Close</button>
       </div>
     </div>
   </div>
@@ -1511,7 +1550,7 @@
       '',
       'Keep confirmation_text short, warm, and natural — like a helpful family member, not a robot.',
       '',
-      'Items may have checkedOut:true (temporarily removed from the home) and quantity>1.',
+      'Items may have quantity>1. checkedOutQty is how many units are temporarily away from home (checkedOut:true means all units are out).',
       '',
       'Current inventory:',
       JSON.stringify({ items: getActiveItems() }, null, 2)
@@ -1867,10 +1906,14 @@
     const nm = document.createElement('div');
     nm.className = 'tree-item-name';
     nm.textContent = capitalise(item.name);
-    if (item.quantity && item.quantity > 1) {
+    const total = itemTotal(item);
+    if (total > 1) {
+      const out = itemOut(item);
       const badge = document.createElement('span');
       badge.className = 'qty-badge';
-      badge.textContent = '×' + item.quantity;
+      badge.textContent = out > 0
+        ? ('×' + itemHome(item) + ' · ' + out + ' out')
+        : ('×' + total);
       nm.appendChild(badge);
     }
     const lc = document.createElement('div');
@@ -1912,6 +1955,33 @@
   function capitalise(s) {
     if (!s) return '';
     return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     Quantity / check-out helpers
+     quantity      = total units owned (default 1)
+     checkedOutQty = how many are currently away from home (default 0)
+     Older items may only carry the legacy `checkedOut` boolean.
+     ───────────────────────────────────────────────────────────── */
+  function itemTotal(item) {
+    return (item.quantity && item.quantity > 0) ? item.quantity : 1;
+  }
+  function itemOut(item) {
+    if (typeof item.checkedOutQty === 'number') {
+      return Math.max(0, Math.min(itemTotal(item), item.checkedOutQty));
+    }
+    return item.checkedOut ? itemTotal(item) : 0;
+  }
+  function itemHome(item) {
+    return itemTotal(item) - itemOut(item);
+  }
+  // Persist the out-count and keep the legacy boolean in sync (true only
+  // when every unit is out) so list dimming + Claude context still work.
+  function setItemOut(item, out) {
+    const total = itemTotal(item);
+    const clamped = Math.max(0, Math.min(total, out));
+    item.checkedOutQty = clamped;
+    item.checkedOut = total > 0 && clamped >= total;
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -2008,18 +2078,34 @@
         const input = document.createElement('input');
         input.type = 'text';
         input.placeholder = `New ${LOC_LABELS[level]}`;
+        // Commit once. Re-rendering surfaces the next-level picker so the user
+        // can keep nesting (e.g. add a sub-area straight into a brand-new area).
+        let committed = false;
         const commit = () => {
+          if (committed) return;
+          committed = true;
           const t = input.value.trim();
           const newPath = prefix.slice();
           if (t) newPath.push(t);
           for (let i = level + 1; i < fullPath.length; i++) newPath.push(fullPath[i]);
           renderLocPickers(containerId, newPath);
         };
+        // Explicit ✓ — on iOS Safari a `blur` triggered by tapping the next
+        // <select> is unreliable and could drop the half-typed name, so the
+        // tappable confirm guarantees the new level is saved and its child
+        // picker appears. Enter and blur stay as fallbacks.
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.className = 'loc-add-ok';
+        ok.textContent = '✓';
+        ok.onmousedown = (ev) => ev.preventDefault(); // don't blur the input on tap
+        ok.onclick = commit;
         input.onblur = commit;
         input.onkeydown = (ev) => {
-          if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+          if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
         };
         row.appendChild(input);
+        row.appendChild(ok);
         input.focus();
       } else if (v === '') {
         renderLocPickers(containerId, prefix);
@@ -2093,20 +2179,87 @@
     state.currentItemId = item.id;
     document.getElementById('action-item-name').textContent = capitalise(item.name);
     document.getElementById('action-item-loc').textContent = locationBreadcrumb(item.location);
+    const total = itemTotal(item);
+    const out = itemOut(item);
+    const statusEl = document.getElementById('action-item-status');
+    if (total > 1) {
+      statusEl.textContent = itemHome(item) + ' at home · ' + out + ' out';
+      statusEl.classList.remove('hidden');
+    } else {
+      statusEl.textContent = '';
+      statusEl.classList.add('hidden');
+    }
     document.getElementById('action-checkout-btn').textContent =
-      item.checkedOut ? 'Check back in' : 'Check out';
+      total > 1 ? 'Check in / out…' : (out > 0 ? 'Check back in' : 'Check out');
     document.getElementById('item-action-modal').classList.remove('hidden');
   }
 
-  async function checkOutItem() {
+  // Action-sheet checkout button: single-unit items toggle directly,
+  // multi-unit items open the quantity-aware check in/out sheet.
+  function onCheckoutBtn() {
     const item = getCurrentItem();
     if (!item) return;
-    item.checkedOut = !item.checkedOut;
+    if (itemTotal(item) > 1) { openCheckoutModal(item); }
+    else { toggleCheckout(item); }
+  }
+
+  async function toggleCheckout(item) {
+    const goingOut = itemOut(item) === 0;
+    setItemOut(item, goingOut ? itemTotal(item) : 0);
     item.lastModified = new Date().toISOString();
     rebuildFuse();
     renderInventory();
     closeModal('item-action-modal');
-    toast(item.checkedOut ? 'Checked out' : 'Checked back in', 'success');
+    toast(goingOut ? 'Checked out' : 'Checked back in', 'success');
+    await syncWithJSONBin();
+  }
+
+  function openCheckoutModal(item) {
+    state.currentItemId = item.id;
+    closeModal('item-action-modal');
+    document.getElementById('checkout-qty').value = 1;
+    renderCheckoutModal();
+    document.getElementById('checkout-modal').classList.remove('hidden');
+  }
+
+  function renderCheckoutModal() {
+    const item = getCurrentItem();
+    if (!item) return;
+    const home = itemHome(item);
+    const out = itemOut(item);
+    document.getElementById('checkout-item-name').textContent = capitalise(item.name);
+    document.getElementById('checkout-status').textContent =
+      home + ' at home · ' + out + ' out (×' + itemTotal(item) + ' total)';
+    const qtyInput = document.getElementById('checkout-qty');
+    const max = Math.max(home, out, 1);
+    qtyInput.max = max;
+    let v = parseInt(qtyInput.value, 10);
+    if (isNaN(v) || v < 1) v = 1;
+    if (v > max) v = max;
+    qtyInput.value = v;
+    document.getElementById('checkout-out-btn').disabled = home < 1;
+    document.getElementById('checkout-in-btn').disabled = out < 1;
+  }
+
+  async function applyCheckout(direction) {
+    const item = getCurrentItem();
+    if (!item) return;
+    let n = parseInt(document.getElementById('checkout-qty').value, 10);
+    if (isNaN(n) || n < 1) n = 1;
+    if (direction === 'out') {
+      n = Math.min(n, itemHome(item));
+      if (n < 1) { toast('Nothing at home to check out', 'error'); return; }
+      setItemOut(item, itemOut(item) + n);
+    } else {
+      n = Math.min(n, itemOut(item));
+      if (n < 1) { toast('Nothing out to check in', 'error'); return; }
+      setItemOut(item, itemOut(item) - n);
+    }
+    item.lastModified = new Date().toISOString();
+    rebuildFuse();
+    renderInventory();
+    closeModal('checkout-modal');
+    toast((direction === 'out' ? 'Checked out ' : 'Checked back in ') + n, 'success');
     await syncWithJSONBin();
   }
 
@@ -2128,6 +2281,9 @@
     if (!name) { toast('Name needed', 'error'); return; }
     item.name = name.toLowerCase();
     item.quantity = (!isNaN(qty) && qty >= 1) ? qty : 1;
+    // Re-clamp the checked-out count to the new total (e.g. if quantity was
+    // lowered below what's currently out) and keep the legacy boolean in sync.
+    setItemOut(item, itemOut(item));
     item.lastModified = new Date().toISOString();
     rebuildFuse();
     renderInventory();
@@ -2483,7 +2639,7 @@
       closeModal('item-action-modal');
       if (item) openEditLocation(item);
     });
-    document.getElementById('action-checkout-btn').addEventListener('click', checkOutItem);
+    document.getElementById('action-checkout-btn').addEventListener('click', onCheckoutBtn);
     document.getElementById('action-edit-btn').addEventListener('click', openEditItem);
     document.getElementById('action-delete-btn').addEventListener('click', deleteCurrentItem);
     document.getElementById('action-cancel-btn').addEventListener('click', () => closeModal('item-action-modal'));
@@ -2499,6 +2655,20 @@
       const inp = document.getElementById('edit-item-qty');
       inp.value = (parseInt(inp.value, 10) || 1) + 1;
     });
+
+    // Check in / out sheet
+    document.getElementById('checkout-dec').addEventListener('click', () => {
+      const inp = document.getElementById('checkout-qty');
+      inp.value = Math.max(1, (parseInt(inp.value, 10) || 1) - 1);
+    });
+    document.getElementById('checkout-inc').addEventListener('click', () => {
+      const inp = document.getElementById('checkout-qty');
+      const max = parseInt(inp.max, 10) || 99;
+      inp.value = Math.min(max, (parseInt(inp.value, 10) || 1) + 1);
+    });
+    document.getElementById('checkout-out-btn').addEventListener('click', () => applyCheckout('out'));
+    document.getElementById('checkout-in-btn').addEventListener('click', () => applyCheckout('in'));
+    document.getElementById('checkout-cancel').addEventListener('click', () => closeModal('checkout-modal'));
 
     // Location context sheet
     document.getElementById('loc-actions-cancel').addEventListener('click', () => closeModal('loc-actions-modal'));
